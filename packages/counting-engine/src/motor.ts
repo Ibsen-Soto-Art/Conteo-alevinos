@@ -28,13 +28,15 @@ export class MotorConteo {
   private rastreador: Rastreador;
   private total = 0;
   private muestras: Deteccion[] = [];
+  /** Área típica aprendida del lote. Se guarda aparte para que cambiar el detector no la borre. */
+  private areaAprendida: number | null = null;
 
   constructor(private config: ConfiguracionMotor) {
     this.rastreador = new Rastreador(config.rastreador);
   }
 
   procesar(cuadro: CuadroGris): ResultadoCuadro {
-    const detecciones = detectarManchas(cuadro, this.config.detector);
+    const detecciones = detectarManchas(cuadro, { ...this.config.detector, areaTipica: this.areaTipica });
     this.aprenderArea(detecciones);
 
     let sumados = 0;
@@ -56,15 +58,22 @@ export class MotorConteo {
     if (parcial.rastreador) this.rastreador = new Rastreador(this.config.rastreador);
   }
 
+  /** El área fijada en la configuración manda; si no hay, la aprendida del lote. */
   get areaTipica(): number | null {
-    return this.config.detector.areaTipica;
+    return this.config.detector.areaTipica ?? this.areaAprendida;
+  }
+
+  /** Para un lote nuevo: olvida el área aprendida y la vuelve a aprender. */
+  olvidarAreaTipica() {
+    this.areaAprendida = null;
+    this.muestras = [];
   }
 
   private aprenderArea(detecciones: Deteccion[]) {
-    if (!this.config.aprenderAreaTipica || this.config.detector.areaTipica !== null) return;
+    if (!this.config.aprenderAreaTipica || this.areaTipica !== null) return;
     this.muestras.push(...detecciones);
     if (this.muestras.length >= MUESTRAS_PARA_AREA) {
-      this.config.detector = { ...this.config.detector, areaTipica: areaMediana(this.muestras) };
+      this.areaAprendida = areaMediana(this.muestras);
       this.muestras = [];
     }
   }

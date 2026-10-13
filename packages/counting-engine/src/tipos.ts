@@ -26,6 +26,9 @@ export interface Pista {
   x: number;
   y: number;
   peso: number;
+  /** Desplazamiento del último cuadro, para predecir dónde estará en el siguiente. */
+  vx: number;
+  vy: number;
   /** Cuadros seguidos sin volver a verla. */
   perdida: number;
   contada: boolean;

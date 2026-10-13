@@ -117,3 +117,57 @@ describe("motor de conteo", () => {
     expect(pasar(motor, objetos, 130, 4)).toBe(20);
   });
 });
+
+describe("correcciones del motor", () => {
+  it("sigue a un alevino que acelera más allá de la distancia máxima (predice con la velocidad)", () => {
+    const motor = new MotorConteo(config());
+    // pasos de 4, 8, 12, 16, 20... píxeles por cuadro; la distancia máxima es 12
+    let y = 0;
+    let total = 0;
+    for (const paso of [0, 4, 8, 12, 16, 20, 20, 20, 20, 20]) {
+      y += paso;
+      total = motor.procesar(cuadroCon([{ x: 30, y, ancho: 4, alto: 4 }])).total;
+    }
+    expect(y).toBeGreaterThan(60);
+    expect(total).toBe(1);
+  });
+
+  it("recalcula el peso cuando dos alevinos pegados se separan antes de la línea", () => {
+    const motor = new MotorConteo(config());
+    let total = 0;
+    // pegados (una mancha de 8x4, pesa 2) hasta y = 25
+    for (let y = 5; y <= 25; y += 4) total = motor.procesar(cuadroCon([{ x: 30, y, ancho: 8, alto: 4 }])).total;
+    // se separan y cruzan la línea por separado
+    for (let y = 29; y <= 90; y += 4) {
+      total = motor.procesar(
+        cuadroCon([
+          { x: 26, y, ancho: 4, alto: 4 },
+          { x: 38, y, ancho: 4, alto: 4 },
+        ]),
+      ).total;
+    }
+    expect(total).toBe(2);
+  });
+
+  it("no olvida el área típica aprendida al cambiar el umbral", () => {
+    const motor = new MotorConteo(
+      config({ detector: { umbral: 128, areaMinima: 6, areaTipica: null }, aprenderAreaTipica: true }),
+    );
+    const fila = Array.from({ length: 12 }, (_, i) => ({ x: 2 + (i % 6) * 13, y: 2 + Math.floor(i / 6) * 10, ancho: 4, alto: 4 }));
+    for (let c = 0; c < 5; c++) motor.procesar(cuadroCon(fila));
+    expect(motor.areaTipica).toBe(16);
+
+    motor.actualizarConfiguracion({ detector: { umbral: 120, areaMinima: 6, areaTipica: null } });
+    expect(motor.areaTipica).toBe(16);
+  });
+
+  it("olvidarAreaTipica la vuelve a aprender (nuevo lote)", () => {
+    const motor = new MotorConteo(
+      config({ detector: { umbral: 128, areaMinima: 6, areaTipica: null }, aprenderAreaTipica: true }),
+    );
+    const fila = Array.from({ length: 12 }, (_, i) => ({ x: 2 + (i % 6) * 13, y: 2 + Math.floor(i / 6) * 10, ancho: 4, alto: 4 }));
+    for (let c = 0; c < 5; c++) motor.procesar(cuadroCon(fila));
+    motor.olvidarAreaTipica();
+    expect(motor.areaTipica).toBeNull();
+  });
+});
