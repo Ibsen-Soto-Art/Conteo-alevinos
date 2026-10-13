@@ -1,0 +1,16 @@
+{
+  "name": "contador-alevinos",
+  "private": true,
+  "description": "App web para contar alevinos con la cámara del teléfono, sin internet.",
+  "packageManager": "pnpm@10.0.0",
+  "scripts": {
+    "dev": "pnpm --filter @contador/web dev",
+    "build": "pnpm -r build",
+    "test": "pnpm -r test",
+    "typecheck": "pnpm -r typecheck"
+  },
+  "devDependencies": {
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.4"
+  }
+}

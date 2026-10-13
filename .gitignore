@@ -1,0 +1,46 @@
+node_modules/
+dist/
+dev-dist/
+.vite/
+coverage/
+*.log
+.DS_Store
+.vscode/
+.idea/
+
+# variables de entorno y claves: nunca van al repositorio
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+*.jwk
+secrets/
+claves/
+
+# videos de finca y de prueba: no van al repositorio
+*.mp4
+*.mov
+*.MP4
+*.MOV
+*.avi
+*.mkv
+*.webm
+
+# datos y modelos de entrenamiento: no van al repositorio
+ml/data/
+ml/runs/
+ml/.venv/
+.venv/
+__pycache__/
+*.pyc
+*.onnx
+*.pt
+*.pth
+!apps/web/public/models/.gitkeep
+
+# salidas del script de precisión
+tests/precision/resultados/
+tests/precision/videos/
