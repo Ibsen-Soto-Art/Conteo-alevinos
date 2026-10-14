@@ -46,3 +46,17 @@ pnpm dev         # app web, cuando exista apps/web
 - Código y nombres en español, como el existente.
 - Cada cambio al motor lleva pruebas. Ninguna prueba se desactiva para que pase.
 - Textos de la interfaz en español, botones grandes (mínimo 56 px), alto contraste.
+
+## Reglas de diseño (siempre; detalle y pantallas en `docs/diseno.md`)
+
+La usa un campesino al sol, con manos mojadas, con prisa y a veces con poca lectura.
+
+1. Una sola tarea por pantalla; un solo botón principal abajo, de al menos 72 px. Todo lo tocable mide al menos 56 px.
+2. Nada de teclado: todo se elige tocando botones grandes.
+3. Palabras simples y trato de usted: «Prueba de 100» (no «calibración»), «Cerrar bolsa», «Siguiente bolsa», «Luz bien», «Poca luz».
+4. **Sin scroll en el celular:** raíz `height: 100dvh; overflow: hidden`, zona central flex que se encoge, letras con `clamp()`. Listas largas por páginas.
+5. Colores: acción `#0B6E69`, fondo `#F3F6F5`, texto `#0F2A30`, bordes `#C9D9D7`, éxito `#1E7A3C`, aviso ámbar, problema rojo. Siempre ícono y palabra, nunca solo color.
+6. Letra Atkinson Hyperlegible, empacada en la app (sin internet).
+7. Solo vertical. Wake Lock mientras cuenta. Vibración y sonido al llegar a la meta.
+
+Los controles técnicos del motor solo existen en `/laboratorio`, que el campesino nunca ve.
