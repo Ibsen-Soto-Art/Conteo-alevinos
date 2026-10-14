@@ -27,7 +27,7 @@ Turborepo no está instalado todavía: con pocos paquetes basta `pnpm -r`. Se ag
 
 - `packages/domain`: calibración y tipos de lote, conteo y bolsa. Con pruebas.
 - `packages/counting-engine`: motor de conteo **clásico, sin entrenamiento**: umbral sobre fondo iluminado, manchas conectadas, rastreador por cercanía y cruce de línea. Las manchas grandes cuentan según área / área típica. El rastreador predice la posición con la velocidad de cada pista y recalcula el peso cuando una mancha se separa. Con pruebas sobre cuadros sintéticos.
-- `apps/web`: página de pruebas (React + Vite) con video o cámara trasera; el motor corre en un Web Worker (`features/conteo/`). HTTPS de desarrollo para usar la cámara desde el celular.
+- `apps/web`: app del campesino (7 pantallas, navegación por hash, estado en `app/sesion.ts`) y `/laboratorio` con los controles técnicos. El motor corre en un Web Worker (`features/conteo/`). HTTPS de desarrollo para usar la cámara desde el celular.
 - Falta: calibración y bolsas en la página, PWA, guía para grabar videos en finca, carpeta `ml/`, ADR en `docs/decisiones/`, CI.
 
 ## Comandos

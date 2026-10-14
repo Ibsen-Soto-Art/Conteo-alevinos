@@ -1,6 +1,11 @@
-# apps/web: página de pruebas del motor
+# apps/web: app del dueño de finca
 
-Página para probar el motor de conteo con un video del celular o con la cámara trasera. El motor (`packages/counting-engine`) corre en un Web Worker; la página reduce cada cuadro a 320 px de lado mayor, se lo envía y dibuja lo que detecta.
+App para contar alevinos con el celular. Sigue las reglas de `docs/diseno.md`: una tarea por pantalla, botones grandes, sin teclado y **sin scroll**.
+
+- **App** (`/`): Inicio → Qué pez → Prueba de 100 → Cuántos por bolsa → Contando → Bolsa lista → Resumen. Por ahora con datos de ejemplo.
+- **Laboratorio** (`/laboratorio`): página técnica para probar el motor con un video o la cámara, con umbral, área, línea, distancia y sentido. Solo para quien desarrolla.
+
+El motor (`packages/counting-engine`) corre en un Web Worker; cada cuadro se reduce a 320 px de lado mayor antes de procesarlo.
 
 ## Arrancar en el computador
 
@@ -16,11 +21,11 @@ Abre `https://localhost:5173`. La primera vez el navegador avisa que el certific
 1. En la terminal donde corre `pnpm dev` aparece una línea `Network: https://192.168.x.x:5173/`. Usa la de tu red wifi.
 2. Abre esa dirección en el celular, **con `https://`**. La cámara solo funciona en páginas seguras.
 3. Acepta el aviso del certificado (Chrome: «Configuración avanzada» → «Acceder al sitio»; Safari: «Mostrar detalles» → «visitar este sitio web»).
-4. Toca «Usar cámara trasera» y da permiso.
+4. Para el laboratorio, agrega `/laboratorio` a la dirección, toca «Usar cámara trasera» y da permiso.
 
 Si el celular no abre la página, revisa que el cortafuegos del computador deje pasar el puerto 5173. En Fedora: `sudo firewall-cmd --add-port=5173/tcp`. Ese permiso dura hasta reiniciar.
 
-## Qué muestra
+## Laboratorio: qué muestra
 
 - **Número grande:** alevinos contados (crudo, sin factor de calibración).
 - **Línea amarilla:** línea de conteo. Se cuenta lo que la cruza en el sentido elegido.

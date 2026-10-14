@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { dibujarEscena, pintarMascara } from "./dibujo";
+import "./laboratorio.css";
+import { dibujarEscena, pintarMascara } from "../conteo/dibujo";
 import { PanelControles } from "./PanelControles";
-import { CONTROLES_INICIALES, LADO_PROCESO, tamanoProceso, type Controles, type MensajeDelMotor } from "./protocolo";
-import { useMotor } from "./useMotor";
+import { CONTROLES_INICIALES, LADO_PROCESO, tamanoProceso, type Controles, type MensajeDelMotor } from "../conteo/protocolo";
+import { useMotor } from "../conteo/useMotor";
 
 type Resultado = Extract<MensajeDelMotor, { tipo: "resultado" }>;
 type Fuente = "ninguna" | "video" | "camara";
@@ -11,7 +12,7 @@ type Fuente = "ninguna" | "video" | "camara";
 const ESCALA_DIBUJO = 2;
 const VELOCIDADES = [1, 0.5, 0.25];
 
-export function PaginaPruebas() {
+export function Laboratorio() {
   const [controles, setControles] = useState<Controles>(CONTROLES_INICIALES);
   const [fuente, setFuente] = useState<Fuente>("ninguna");
   const [total, setTotal] = useState(0);
@@ -211,9 +212,9 @@ export function PaginaPruebas() {
   }
 
   return (
-    <main className="pagina">
+    <main className="laboratorio pagina">
       <header className="cabecera">
-        <h1>Contador de alevinos · página de pruebas</h1>
+        <h1>Laboratorio del motor</h1>
       </header>
 
       <section className="conteo" aria-live="polite">

@@ -1,5 +1,5 @@
 import type { SentidoFlujo } from "@contador/counting-engine";
-import type { Controles } from "./protocolo";
+import type { Controles } from "../conteo/protocolo";
 
 const SENTIDOS: { valor: SentidoFlujo; flecha: string; nombre: string }[] = [
   { valor: "abajo", flecha: "↓", nombre: "Hacia abajo" },

@@ -13,6 +13,7 @@
   "dependencies": {
     "@contador/counting-engine": "workspace:*",
     "@contador/domain": "workspace:*",
+    "@fontsource/atkinson-hyperlegible": "^5.3.0",
     "react": "^19.3.0",
     "react-dom": "^19.3.0"
   },
