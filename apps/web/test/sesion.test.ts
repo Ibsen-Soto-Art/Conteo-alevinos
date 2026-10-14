@@ -128,3 +128,23 @@ describe("prueba de 100", () => {
     expect(e).toMatchObject({ pruebaEnVivo: 0, pruebaApp: null });
   });
 });
+
+describe("volver a cero", () => {
+  it("en Contando pone en 0 solo la bolsa abierta: las cerradas y su total no cambian", () => {
+    const e = aplicar(contando(), { tipo: "sumar", cantidad: 873 }, cerrar(1), { tipo: "sumar", cantidad: 300 }, { tipo: "bolsaACero" });
+    expect(e.crudo).toBe(0);
+    expect(e.bolsas).toHaveLength(1);
+    expect(e.bolsas[0]).toMatchObject({ estado: "valida", crudo: 873 });
+    expect(numeroBolsaAbierta(e)).toBe(2);
+    expect(totalHoy(e)).toBe(e.bolsas[0]!.cantidad);
+  });
+
+  it("en la prueba de 100 pone el conteo en 0 sin perder el pez ni el tamaño", () => {
+    const e = aplicar(
+      { ...estadoInicial(), especie: "bocachico", talla: "mediano" },
+      { tipo: "sumarPrueba", cantidad: 42 },
+      { tipo: "pruebaACero" },
+    );
+    expect(e).toMatchObject({ pruebaEnVivo: 0, pruebaApp: null, especie: "bocachico", talla: "mediano" });
+  });
+});

@@ -38,6 +38,13 @@ En este orden:
 6. **Bolsa lista:** pantalla verde completa con chulo, «¡Bolsa 3 lista!», el número y «Cierre la compuerta y ponga una bolsa nueva». Botones «Siguiente bolsa», «Deshacer» (unos segundos) y «Terminar».
 7. **Resumen:** «Conteo terminado», total y número de bolsas en grande, una cuadrícula con cada bolsa y «Listo, volver al inicio».
 
+## Volver a cero
+
+En «Prueba de 100» y en «Contando» hay un botón secundario (blanco con borde, al menos 56 px) «Volver a cero», con flecha circular, para cuando pasa algo que no es un alevino (una mano, una burbuja) o uno de más. Siempre pide confirmación con un cuadro grande «¿Volver a cero?» con «Sí, volver a cero» y «No», de al menos 72 px. Si el conteo ya está en 0 se ve apagado.
+
+- En la prueba: el conteo vuelve a 0 y se reinicia el rastreador del motor; el pez y el tamaño no cambian.
+- En Contando: solo la bolsa abierta vuelve a 0; las bolsas cerradas y su total no cambian.
+
 ## Laboratorio
 
 La página de pruebas con los controles técnicos (umbral, área, línea, distancia, sentido) vive en `/laboratorio` y es solo para quien desarrolla. El campesino nunca ve esos controles. El laboratorio no sigue la regla de «sin scroll».

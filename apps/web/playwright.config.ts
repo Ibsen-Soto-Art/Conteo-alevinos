@@ -25,7 +25,7 @@ export default defineConfig({
   projects: TELEFONOS.map((t, i) => ({
     name: t.name,
     // El conteo en vivo no depende del tamaño de pantalla: basta con correrlo en el primero.
-    testIgnore: i === 0 ? undefined : ["conteo-en-vivo.spec.ts", "conteo-completo.spec.ts"],
+    testIgnore: i === 0 ? undefined : ["conteo-en-vivo.spec.ts", "conteo-completo.spec.ts", "volver-a-cero.spec.ts"],
     use: {
       ...devices["Desktop Chrome"],
       viewport: t.viewport,

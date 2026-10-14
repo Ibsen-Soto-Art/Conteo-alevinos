@@ -46,12 +46,16 @@ export type Accion =
   | { tipo: "sumarPrueba"; cantidad: number }
   | { tipo: "resultadoPrueba"; contados: number }
   | { tipo: "repetirPrueba" }
+  /** «Volver a cero» durante la prueba: el conteo vuelve a 0, el pez y el tamaño siguen. */
+  | { tipo: "pruebaACero" }
   | { tipo: "aceptarPrueba"; lote: Lote }
   | { tipo: "fijarMeta"; meta: number | null }
   | { tipo: "empezarConteo"; conteo: Conteo }
   | { tipo: "sumar"; cantidad: number }
   | { tipo: "pausar" }
   | { tipo: "seguir" }
+  /** «Volver a cero» en Contando: solo la bolsa abierta vuelve a 0. */
+  | { tipo: "bolsaACero" }
   | { tipo: "cerrarBolsa"; id: string; cerradaEn: string }
   | { tipo: "deshacerCierre" }
   | { tipo: "terminar"; fin: string }
@@ -131,6 +135,7 @@ export function reducir(e: EstadoSesion, a: Accion): EstadoSesion {
     case "resultadoPrueba":
       return { ...e, pruebaApp: a.contados };
     case "repetirPrueba":
+    case "pruebaACero":
       return { ...e, pruebaEnVivo: 0, pruebaApp: null };
     case "aceptarPrueba":
       return { ...e, lote: a.lote };
@@ -144,6 +149,8 @@ export function reducir(e: EstadoSesion, a: Accion): EstadoSesion {
       return { ...e, pausado: true };
     case "seguir":
       return { ...e, pausado: false };
+    case "bolsaACero":
+      return { ...e, crudo: 0 };
     case "cerrarBolsa": {
       const bolsa = bolsaAlCerrar(e, a.id, a.cerradaEn);
       if (!bolsa) return e;

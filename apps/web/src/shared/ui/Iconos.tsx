@@ -148,3 +148,11 @@ export const DibujoPez = (p: Props) => (
     <path d="M44 20c4 7 4 17 0 24" fill="none" stroke="#F3F6F5" strokeWidth="3" strokeLinecap="round" opacity="0.7" />
   </svg>
 );
+
+/** Flecha circular de «Volver a cero». */
+export const IconoReiniciar = (p: Props) => (
+  <Icono {...p}>
+    <path d="M4 12a8 8 0 1 0 2.4-5.7" />
+    <path d="M4 4v5h5" />
+  </Icono>
+);

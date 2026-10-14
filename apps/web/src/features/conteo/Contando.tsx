@@ -1,10 +1,12 @@
 import { useEffect, useRef } from "react";
+import { useMotorCompartido } from "../../app/MotorContexto";
 import { navegar } from "../../app/rutas";
 import { AVISO_FALTAN, enBolsa as alevinosEnBolsa, numeroBolsaAbierta, totalHoy } from "../../app/sesion";
 import { useSesion } from "../../app/SesionContexto";
 import { avisarMeta } from "../../shared/avisos";
 import { formatear } from "../../shared/formato";
 import { IconoAviso, IconoBolsa, IconoChulo, IconoPausa, IconoSeguir } from "../../shared/ui/Iconos";
+import { BotonVolverACero } from "../../shared/ui/BotonVolverACero";
 import { Pantalla } from "../../shared/ui/Pantalla";
 import { Redirigir } from "../../shared/ui/Redirigir";
 import { useWakeLock } from "../../shared/useWakeLock";
@@ -13,6 +15,7 @@ import { AvisoLuz, VistaCamara } from "./VistaCamara";
 
 export function Contando() {
   const { estado, despachar, acciones } = useSesion();
+  const motor = useMotorCompartido();
   const { meta, pausado } = estado;
   // Lo que se muestra y se compara con la meta ya va corregido con el factor de la prueba de 100.
   const enBolsa = alevinosEnBolsa(estado);
@@ -35,6 +38,7 @@ export function Contando() {
 
   return (
     <Pantalla
+      clasePie="pie-columna"
       className={`contando ${cerca ? "contando-cerca" : ""} ${llego ? "contando-llego" : ""}`}
       cabecera={
         <VistaCamara videoRef={vivo.videoRef} estado={vivo.estado} ajustes={vivo.ajustes} onReintentar={vivo.reintentar}>
@@ -46,22 +50,32 @@ export function Contando() {
       }
       pie={
         <>
-          <button
-            type="button"
-            className="boton boton-secundario"
-            aria-pressed={pausado}
-            onClick={() => despachar({ tipo: pausado ? "seguir" : "pausar" })}
-          >
-            {pausado ? (
-              <>
-                <IconoSeguir /> Seguir
-              </>
-            ) : (
-              <>
-                <IconoPausa /> Pausar
-              </>
-            )}
-          </button>
+          <div className="fila-secundaria">
+            <BotonVolverACero
+              enCero={enBolsa === 0}
+              detalle={`La bolsa ${numeroBolsaAbierta(estado)} vuelve a 0. Las bolsas cerradas no cambian.`}
+              onConfirmar={() => {
+                despachar({ tipo: "bolsaACero" });
+                motor.enviar({ tipo: "reiniciar" });
+              }}
+            />
+            <button
+              type="button"
+              className="boton boton-secundario"
+              aria-pressed={pausado}
+              onClick={() => despachar({ tipo: pausado ? "seguir" : "pausar" })}
+            >
+              {pausado ? (
+                <>
+                  <IconoSeguir /> Seguir
+                </>
+              ) : (
+                <>
+                  <IconoPausa /> Pausar
+                </>
+              )}
+            </button>
+          </div>
           <button
             type="button"
             className="boton boton-principal"

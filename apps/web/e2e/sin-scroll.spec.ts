@@ -48,12 +48,18 @@ async function medir(pagina: Page): Promise<Medida> {
         .map(nombre),
       pequenos: [...document.querySelectorAll(".app button")]
         .filter((el) => {
-          const minimo = el.classList.contains("boton-principal") ? 72 : 56;
+          const grande = el.classList.contains("boton-principal") || el.classList.contains("boton-confirmar");
+          const minimo = grande ? 72 : 56;
           return el.getBoundingClientRect().height < minimo - 0.5;
         })
         .map(nombre),
     };
   });
+}
+
+/** Enganche de ?demo (App.tsx): fija datos sin esperar a la cámara. */
+async function despachar(pagina: Page, accion: object) {
+  await pagina.evaluate((a) => (window as unknown as { __demo: { despachar: (a: unknown) => void } }).__demo.despachar(a), accion);
 }
 
 async function revisar(pagina: Page) {
@@ -83,6 +89,24 @@ const PANTALLAS: { nombre: string; ruta: string; antes?: (p: Page) => Promise<vo
     antes: (p) => p.getByRole("button", { name: /Sin meta/ }).click(),
   },
   { nombre: "contando", ruta: "contando" },
+  {
+    nombre: "contando: ¿volver a cero?",
+    ruta: "contando",
+    antes: async (p) => {
+      await p.getByRole("button", { name: "Volver a cero" }).click();
+      await expect(p.getByRole("alertdialog")).toBeVisible();
+    },
+  },
+  {
+    nombre: "prueba de 100: ¿volver a cero?",
+    ruta: "prueba",
+    antes: async (p) => {
+      await p.getByRole("button", { name: "Repetir" }).click();
+      await despachar(p, { tipo: "sumarPrueba", cantidad: 37 });
+      await p.getByRole("button", { name: "Volver a cero" }).click();
+      await expect(p.getByRole("alertdialog")).toBeVisible();
+    },
+  },
   {
     nombre: "contando: en pausa",
     ruta: "contando",
@@ -118,12 +142,7 @@ test("el recorrido completo no tiene scroll en ninguna pantalla", async ({ page 
   await page.getByRole("button", { name: /Siguiente/ }).click();
   await revisar(page);
   // No se espera a que la cámara cuente 100: se fija el resultado con el enganche de ?demo.
-  await page.evaluate(() =>
-    (window as unknown as { __demo: { despachar: (a: unknown) => void } }).__demo.despachar({
-      tipo: "resultadoPrueba",
-      contados: 98,
-    }),
-  );
+  await despachar(page, { tipo: "resultadoPrueba", contados: 98 });
   await expect(page.getByText("Prueba buena")).toBeVisible();
   await revisar(page);
   await page.getByRole("button", { name: /Siguiente/ }).click();

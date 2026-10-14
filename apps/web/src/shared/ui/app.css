@@ -851,3 +851,80 @@ html:not(.modo-laboratorio) body {
     margin: 0;
   }
 }
+
+/* ---------- volver a cero y confirmación ---------- */
+
+.pie-columna {
+  flex-direction: column;
+}
+
+.fila-secundaria {
+  display: flex;
+  gap: 12px;
+}
+
+.fila-secundaria .boton {
+  flex: 1;
+  min-height: var(--toque);
+}
+
+.boton-cero {
+  min-height: var(--toque);
+}
+
+.pantalla-pie .boton.boton-cero,
+.pantalla-pie .fila-secundaria .boton {
+  min-height: var(--toque);
+}
+
+.confirmar-fondo {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgb(15 42 48 / 0.6);
+}
+
+.confirmar {
+  width: 100%;
+  max-width: 420px;
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+  padding: 20px 16px 16px;
+  border: 2px solid var(--borde);
+  border-radius: 20px;
+  background: var(--blanco);
+  text-align: center;
+}
+
+.confirmar-icono {
+  font-size: 3rem;
+  color: var(--accion);
+}
+
+.confirmar-titulo {
+  margin: 0;
+  font-size: clamp(1.6rem, 4.5dvh, 2.2rem);
+}
+
+.confirmar-detalle {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+/* Más específico que las filas de botones de 56 px: el cuadro puede abrirse dentro de ellas. */
+.confirmar-fondo .confirmar .boton.boton-confirmar {
+  width: 100%;
+  min-height: var(--principal);
+  font-size: clamp(1.1rem, min(3.2dvh, 5.4vw), 1.5rem);
+}
+
+.boton-peligro {
+  background: var(--problema);
+  border-color: var(--problema);
+  color: var(--blanco);
+}

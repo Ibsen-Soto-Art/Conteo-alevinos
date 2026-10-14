@@ -1,9 +1,11 @@
 import { calcularCalibracion } from "@contador/domain";
 import { PRUEBA_A_MANO } from "../../app/acciones";
+import { useMotorCompartido } from "../../app/MotorContexto";
 import { navegar } from "../../app/rutas";
 import { useSesion } from "../../app/SesionContexto";
 import { BarraPasos } from "../../shared/ui/BarraPasos";
 import { IconoChulo, IconoDeshacer, IconoProblema, IconoSiguiente } from "../../shared/ui/Iconos";
+import { BotonVolverACero } from "../../shared/ui/BotonVolverACero";
 import { Pantalla } from "../../shared/ui/Pantalla";
 import { Redirigir } from "../../shared/ui/Redirigir";
 import { useWakeLock } from "../../shared/useWakeLock";
@@ -16,6 +18,7 @@ const PASOS = ["Cuente 100 alevinos a mano", "Échelos al canal", "Mire cuántos
 
 export function Prueba100() {
   const { estado, despachar, acciones } = useSesion();
+  const motor = useMotorCompartido();
   const terminada = estado.pruebaApp !== null;
   const enVivo = estado.pruebaEnVivo;
   const vivo = useConteoEnVivo({ activo: !terminada, onSumados: (n) => despachar({ tipo: "sumarPrueba", cantidad: n }) });
@@ -29,6 +32,7 @@ export function Prueba100() {
 
   return (
     <Pantalla
+      clasePie={terminada ? "" : "pie-columna"}
       cabecera={
         <div className="cabecera-con-camara">
           <BarraPasos paso={2} onVolver={() => navegar("pez")} />
@@ -47,14 +51,24 @@ export function Prueba100() {
       }
       pie={
         !terminada ? (
-          <button
-            type="button"
-            className="boton boton-principal"
-            disabled={enVivo === 0}
-            onClick={() => despachar({ tipo: "resultadoPrueba", contados: enVivo })}
-          >
-            <IconoChulo /> Ya pasaron todos
-          </button>
+          <>
+            <BotonVolverACero
+              enCero={enVivo === 0}
+              detalle="La prueba vuelve a 0. El pez y el tamaño no cambian."
+              onConfirmar={() => {
+                despachar({ tipo: "pruebaACero" });
+                motor.enviar({ tipo: "reiniciar" });
+              }}
+            />
+            <button
+              type="button"
+              className="boton boton-principal"
+              disabled={enVivo === 0}
+              onClick={() => despachar({ tipo: "resultadoPrueba", contados: enVivo })}
+            >
+              <IconoChulo /> Ya pasaron todos
+            </button>
+          </>
         ) : resultado?.ok ? (
           <>
             <button type="button" className="boton boton-secundario" onClick={repetir}>
