@@ -1,4 +1,4 @@
-import { MotorConteo, aGris } from "@contador/counting-engine";
+import { MotorConteo, aGris, brilloMedio } from "@contador/counting-engine";
 import { configuracionMotor, type Controles, type MensajeAlMotor, type MensajeDelMotor } from "./protocolo";
 
 /**
@@ -38,7 +38,8 @@ export function crearManejador(reloj: () => number = () => performance.now()) {
           return { tipo: "error", mensaje: "El motor no está configurado para este tamaño de cuadro." };
         }
         const inicio = reloj();
-        const r = motor.procesar(aGris(new Uint8ClampedArray(msg.rgba), msg.ancho, msg.alto, gris));
+        const cuadro = aGris(new Uint8ClampedArray(msg.rgba), msg.ancho, msg.alto, gris);
+        const r = motor.procesar(cuadro);
         return {
           tipo: "resultado",
           total: r.total,
@@ -48,6 +49,7 @@ export function crearManejador(reloj: () => number = () => performance.now()) {
           areaTipica: motor.areaTipica,
           ancho: msg.ancho,
           alto: msg.alto,
+          brillo: brilloMedio(cuadro),
           ms: reloj() - inicio,
         };
       }

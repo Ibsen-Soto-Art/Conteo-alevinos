@@ -34,6 +34,7 @@ describe("manejador del worker", () => {
     manejar({ tipo: "configurar", controles, ancho: 80, alto: 120 });
     const r = manejar({ tipo: "cuadro", ancho: 80, alto: 120, rgba: cuadroRgba([{ x: 10, y: 10, lado: 4 }]) });
     expect(r).toMatchObject({ tipo: "resultado", ms: 0, ancho: 80, alto: 120 });
+    if (r?.tipo === "resultado") expect(r.brillo).toBeGreaterThan(200);
     if (r?.tipo === "resultado") {
       expect(r.detecciones).toHaveLength(1);
       expect(r.pistas[0]).toMatchObject({ x: 11.5, y: 11.5, contada: false });

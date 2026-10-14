@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CONTROLES_INICIALES, configuracionMotor, posicionLineaPx, tamanoProceso } from "../src/features/conteo/protocolo";
+import { CONTROLES_INICIALES, configuracionMotor, lineaEnVista, posicionLineaPx, tamanoProceso } from "../src/features/conteo/protocolo";
 
 describe("tamanoProceso", () => {
   it("reduce un video horizontal a 320 px de lado mayor", () => {
@@ -38,5 +38,25 @@ describe("configuracionMotor", () => {
     expect(c.detector).toEqual({ umbral: 90, areaMinima: CONTROLES_INICIALES.areaMinima, areaTipica: null });
     expect(c.posicionLinea).toBe(60);
     expect(c.aprenderAreaTipica).toBe(true);
+  });
+});
+
+describe("lineaEnVista", () => {
+  it("sin recorte la línea queda en el mismo porcentaje", () => {
+    expect(lineaEnVista(50, "abajo", { ancho: 720, alto: 1280 }, { ancho: 360, alto: 640 })).toBe(320);
+  });
+
+  it("con la vista recortada (object-fit: cover) corrige el desplazamiento", () => {
+    // video vertical 720×1280 en una franja de 360×160: se ve solo el centro del video
+    const vista = { ancho: 360, alto: 160 };
+    const video = { ancho: 720, alto: 1280 };
+    expect(lineaEnVista(50, "abajo", video, vista)).toBe(80);
+    // la franja muestra del 37,5 % al 62,5 % del video
+    expect(lineaEnVista(40, "abajo", video, vista)).toBe(16);
+    expect(lineaEnVista(30, "abajo", video, vista)).toBeLessThan(0);
+  });
+
+  it("con flujo horizontal usa el ancho", () => {
+    expect(lineaEnVista(25, "derecha", { ancho: 1280, alto: 720 }, { ancho: 640, alto: 360 })).toBe(160);
   });
 });

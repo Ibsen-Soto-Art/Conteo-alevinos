@@ -2,7 +2,7 @@
 
 App para contar alevinos con el celular. Sigue las reglas de `docs/diseno.md`: una tarea por pantalla, botones grandes, sin teclado y **sin scroll**.
 
-- **App** (`/`): Inicio → Qué pez → Prueba de 100 → Cuántos por bolsa → Contando → Bolsa lista → Resumen. Por ahora con datos de ejemplo.
+- **App** (`/`): Inicio → Qué pez → Prueba de 100 → Cuántos por bolsa → Contando → Bolsa lista → Resumen. «Prueba de 100» y «Contando» usan la cámara trasera y el motor en vivo. Con `?demo` en la dirección (`https://…:5173/?demo`) arranca con datos de ejemplo.
 - **Laboratorio** (`/laboratorio`): página técnica para probar el motor con un video o la cámara, con umbral, área, línea, distancia y sentido. Solo para quien desarrolla.
 
 El motor (`packages/counting-engine`) corre en un Web Worker; cada cuadro se reduce a 320 px de lado mayor antes de procesarlo.
@@ -13,7 +13,15 @@ El motor (`packages/counting-engine`) corre en un Web Worker; cada cuadro se red
 pnpm e2e
 ```
 
-Recorre todas las pantallas en 360×640, 390×844 y 412×915 y falla si alguna tiene scroll, deja algo fuera de la pantalla, corta el texto de un botón o tiene botones de menos de 56 px (72 px el principal). La primera vez hay que bajar el navegador: `pnpm --filter @contador/web exec playwright install chromium`.
+Recorre todas las pantallas en 360×640, 390×844 y 412×915 y falla si alguna tiene scroll, deja algo fuera de la pantalla, corta el texto de un botón o tiene botones de menos de 56 px (72 px el principal).
+
+También comprueba el conteo en vivo: antes de empezar, ffmpeg genera un video sintético con 10 manchas que cruzan la línea, y Chromium lo usa como cámara falsa.
+
+Necesita ffmpeg instalado. La primera vez hay que bajar el navegador: `pnpm --filter @contador/web exec playwright install chromium`.
+
+## Ajustes del motor
+
+La app no muestra controles técnicos. Usa los ajustes que se dejaron en `/laboratorio` **en el mismo teléfono** (se guardan solos al moverlos); si nunca se abrió el laboratorio, usa los de fábrica.
 
 ## Arrancar en el computador
 

@@ -2,7 +2,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import "./laboratorio.css";
 import { dibujarEscena, pintarMascara } from "../conteo/dibujo";
 import { PanelControles } from "./PanelControles";
-import { CONTROLES_INICIALES, LADO_PROCESO, tamanoProceso, type Controles, type MensajeDelMotor } from "../conteo/protocolo";
+import { guardarAjustes, leerAjustes } from "../conteo/ajustes";
+import { LADO_PROCESO, tamanoProceso, type Controles, type MensajeDelMotor } from "../conteo/protocolo";
 import { useMotor } from "../conteo/useMotor";
 
 type Resultado = Extract<MensajeDelMotor, { tipo: "resultado" }>;
@@ -13,7 +14,7 @@ const ESCALA_DIBUJO = 2;
 const VELOCIDADES = [1, 0.5, 0.25];
 
 export function Laboratorio() {
-  const [controles, setControles] = useState<Controles>(CONTROLES_INICIALES);
+  const [controles, setControles] = useState<Controles>(leerAjustes);
   const [fuente, setFuente] = useState<Fuente>("ninguna");
   const [total, setTotal] = useState(0);
   const [pausado, setPausado] = useState(false);
@@ -53,8 +54,10 @@ export function Laboratorio() {
 
   const motor = useMotor(alResponder);
 
-  // Cada cambio de controles va al motor sin reiniciar el conteo.
+  // Cada cambio de controles va al motor sin reiniciar el conteo, y queda guardado
+  // en este teléfono para que la app cuente con los mismos ajustes.
   useEffect(() => {
+    guardarAjustes(controles);
     const { ancho, alto } = tamano.current;
     if (ancho > 0) motor.enviar({ tipo: "configurar", controles, ancho, alto });
   }, [controles, motor]);

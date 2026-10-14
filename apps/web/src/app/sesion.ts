@@ -18,7 +18,9 @@ export interface EstadoSesion {
   finca: string;
   especie: Especie | null;
   talla: Talla | null;
-  /** Lo que contó la app en la prueba de 100; null mientras no se haya hecho. */
+  /** Lo que va contando la app durante la prueba de 100. */
+  pruebaEnVivo: number;
+  /** Lo que contó la app en la prueba de 100 al terminarla; null mientras no se haya hecho. */
   pruebaApp: number | null;
   /** Alevinos por bolsa; null = sin meta, el usuario cierra cada bolsa. */
   meta: number | null;
@@ -35,6 +37,7 @@ export type Accion =
   | { tipo: "empezar" }
   | { tipo: "elegirEspecie"; especie: Especie }
   | { tipo: "elegirTalla"; talla: Talla }
+  | { tipo: "sumarPrueba"; cantidad: number }
   | { tipo: "resultadoPrueba"; contados: number }
   | { tipo: "repetirPrueba" }
   | { tipo: "fijarMeta"; meta: number | null }
@@ -67,15 +70,17 @@ export function numeroBolsaAbierta(e: EstadoSesion): number {
 export function reducir(e: EstadoSesion, a: Accion): EstadoSesion {
   switch (a.tipo) {
     case "empezar":
-      return { ...e, especie: null, talla: null, pruebaApp: null, enBolsa: 0, bolsas: [], pausado: false };
+      return { ...e, especie: null, talla: null, pruebaEnVivo: 0, pruebaApp: null, enBolsa: 0, bolsas: [], pausado: false };
     case "elegirEspecie":
       return { ...e, especie: a.especie };
     case "elegirTalla":
       return { ...e, talla: a.talla };
+    case "sumarPrueba":
+      return e.pruebaApp === null ? { ...e, pruebaEnVivo: e.pruebaEnVivo + a.cantidad } : e;
     case "resultadoPrueba":
       return { ...e, pruebaApp: a.contados };
     case "repetirPrueba":
-      return { ...e, pruebaApp: null };
+      return { ...e, pruebaEnVivo: 0, pruebaApp: null };
     case "fijarMeta":
       return { ...e, meta: a.meta };
     case "sumar":
@@ -110,6 +115,21 @@ export function reducir(e: EstadoSesion, a: Accion): EstadoSesion {
   }
 }
 
+export function estadoInicial(): EstadoSesion {
+  return {
+    finca: "Mi finca",
+    especie: null,
+    talla: null,
+    pruebaEnVivo: 0,
+    pruebaApp: null,
+    meta: META_INICIAL,
+    enBolsa: 0,
+    bolsas: [],
+    pausado: false,
+    historial: [],
+  };
+}
+
 /** Datos de ejemplo para ver las pantallas mientras no hay base de datos ni motor conectados. */
 export function estadoDeEjemplo(ahora = new Date()): EstadoSesion {
   const ayer = new Date(ahora.getTime() - 86_400_000);
@@ -118,6 +138,7 @@ export function estadoDeEjemplo(ahora = new Date()): EstadoSesion {
     finca: "Finca La Esperanza",
     especie: "cachama",
     talla: "pequeno",
+    pruebaEnVivo: 97,
     pruebaApp: 97,
     meta: META_INICIAL,
     enBolsa: 763,

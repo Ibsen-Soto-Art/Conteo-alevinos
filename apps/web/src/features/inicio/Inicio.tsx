@@ -1,3 +1,4 @@
+import { useMotorCompartido } from "../../app/MotorContexto";
 import { navegar } from "../../app/rutas";
 import { useSesion } from "../../app/SesionContexto";
 import { nombreEspecie, nombreTalla } from "../../shared/catalogo";
@@ -7,6 +8,7 @@ import { Pantalla } from "../../shared/ui/Pantalla";
 
 export function Inicio() {
   const { estado, despachar } = useSesion();
+  const motor = useMotorCompartido();
   const ultimo = estado.historial[0];
 
   return (
@@ -37,6 +39,7 @@ export function Inicio() {
         className="boton-contar"
         onClick={() => {
           despachar({ tipo: "empezar" });
+          motor.enviar({ tipo: "olvidarArea" }); // lote nuevo: el motor vuelve a aprender el tamaño
           navegar("pez");
         }}
       >

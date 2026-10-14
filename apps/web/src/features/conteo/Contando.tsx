@@ -1,32 +1,43 @@
+import { useEffect, useRef } from "react";
 import { navegar } from "../../app/rutas";
 import { AVISO_FALTAN, numeroBolsaAbierta, totalHoy } from "../../app/sesion";
 import { useSesion } from "../../app/SesionContexto";
+import { avisarMeta } from "../../shared/avisos";
 import { formatear } from "../../shared/formato";
-import { IconoAviso, IconoBolsa, IconoChulo, IconoPausa, IconoSeguir, IconoSol } from "../../shared/ui/Iconos";
+import { IconoAviso, IconoBolsa, IconoChulo, IconoPausa, IconoSeguir } from "../../shared/ui/Iconos";
 import { Pantalla } from "../../shared/ui/Pantalla";
+import { useWakeLock } from "../../shared/useWakeLock";
+import { useConteoEnVivo } from "./useConteoEnVivo";
+import { AvisoLuz, VistaCamara } from "./VistaCamara";
 
 export function Contando() {
   const { estado, despachar } = useSesion();
   const { meta, enBolsa, pausado } = estado;
+  const vivo = useConteoEnVivo({ activo: true, onSumados: (n) => despachar({ tipo: "sumar", cantidad: n }) });
+  useWakeLock(true);
+
   const faltan = meta === null ? null : Math.max(0, meta - enBolsa);
   const cerca = faltan !== null && faltan > 0 && faltan <= AVISO_FALTAN;
   const llego = faltan === 0;
   const avance = meta === null ? 0 : Math.min(1, enBolsa / meta);
 
+  // Al cruzar la meta (no al abrir la pantalla ya pasada): vibra y suena.
+  const antes = useRef(enBolsa);
+  useEffect(() => {
+    if (meta !== null && antes.current < meta && enBolsa >= meta) avisarMeta();
+    antes.current = enBolsa;
+  }, [enBolsa, meta]);
+
   return (
     <Pantalla
       className={`contando ${cerca ? "contando-cerca" : ""} ${llego ? "contando-llego" : ""}`}
       cabecera={
-        <div className="camara">
-          {/* La cámara real se conecta en la parte 3. */}
-          <div className="camara-linea" />
-          <span className="estado estado-exito camara-luz">
-            <IconoSol /> Luz bien
-          </span>
+        <VistaCamara videoRef={vivo.videoRef} estado={vivo.estado} ajustes={vivo.ajustes} onReintentar={vivo.reintentar}>
+          <AvisoLuz luz={vivo.luz} className="camara-luz" />
           <span className="estado camara-bolsa">
             <IconoBolsa /> Bolsa {numeroBolsaAbierta(estado)}
           </span>
-        </div>
+        </VistaCamara>
       }
       pie={
         <>
@@ -60,7 +71,7 @@ export function Contando() {
       }
     >
       <div className="contador">
-        <output className="contador-numero" aria-live="polite">
+        <output className="contador-numero" aria-live="polite" data-largo={formatear(enBolsa).length}>
           {formatear(enBolsa)}
         </output>
         <span className="contador-de">{meta === null ? "alevinos en esta bolsa" : `de ${formatear(meta)}`}</span>
@@ -71,7 +82,7 @@ export function Contando() {
         )}
         {pausado ? (
           <p className="estado-grande estado-aviso">
-            <IconoPausa /> En pausa
+            <IconoPausa /> En pausa: no está contando
           </p>
         ) : llego ? (
           <p className="estado-grande estado-exito">

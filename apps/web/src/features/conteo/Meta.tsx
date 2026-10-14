@@ -1,6 +1,7 @@
 import { navegar } from "../../app/rutas";
 import { META_INICIAL, META_PASO, cambiarMeta } from "../../app/sesion";
 import { useSesion } from "../../app/SesionContexto";
+import { prepararSonido } from "../../shared/avisos";
 import { formatear } from "../../shared/formato";
 import { BarraPasos } from "../../shared/ui/BarraPasos";
 import { IconoChulo, IconoMas, IconoMenos, IconoSeguir } from "../../shared/ui/Iconos";
@@ -18,7 +19,11 @@ export function Meta() {
     <Pantalla
       cabecera={<BarraPasos paso={3} onVolver={() => navegar("prueba")} />}
       pie={
-        <button type="button" className="boton boton-principal" onClick={() => navegar("contando")}>
+        <button type="button" className="boton boton-principal" onClick={() => {
+            prepararSonido(); // el aviso de la meta solo puede sonar si antes hubo un toque
+            navegar("contando");
+          }}
+        >
           <IconoSeguir /> Empezar a contar
         </button>
       }

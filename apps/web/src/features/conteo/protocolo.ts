@@ -43,6 +43,23 @@ export function posicionLineaPx(porcentaje: number, sentido: SentidoFlujo, ancho
   return (Math.min(100, Math.max(0, porcentaje)) / 100) * largo;
 }
 
+/**
+ * Dónde queda la línea de conteo dentro de una vista que muestra el video con
+ * `object-fit: cover` (recortado y centrado). Devuelve píxeles de la vista sobre el eje del flujo.
+ */
+export function lineaEnVista(
+  porcentaje: number,
+  sentido: SentidoFlujo,
+  video: { ancho: number; alto: number },
+  vista: { ancho: number; alto: number },
+): number {
+  const escala = Math.max(vista.ancho / video.ancho, vista.alto / video.alto);
+  const vertical = flujoVertical(sentido);
+  const largoVideo = (vertical ? video.alto : video.ancho) * escala;
+  const largoVista = vertical ? vista.alto : vista.ancho;
+  return (Math.min(100, Math.max(0, porcentaje)) / 100) * largoVideo - (largoVideo - largoVista) / 2;
+}
+
 export function configuracionMotor(c: Controles, ancho: number, alto: number): ConfiguracionMotor {
   return {
     detector: { umbral: c.umbral, areaMinima: c.areaMinima, areaTipica: null },
@@ -81,6 +98,8 @@ export type MensajeDelMotor =
       areaTipica: number | null;
       ancho: number;
       alto: number;
+      /** Brillo medio del cuadro (0 a 255), para avisar «Poca luz». */
+      brillo: number;
       /** Milisegundos que tardó el motor en este cuadro. */
       ms: number;
     }

@@ -116,7 +116,15 @@ test("el recorrido completo no tiene scroll en ninguna pantalla", async ({ page 
   await page.getByRole("button", { name: "Mediano" }).click();
   await revisar(page);
   await page.getByRole("button", { name: /Siguiente/ }).click();
-  await page.getByRole("button", { name: "Ya pasaron todos" }).click();
+  await revisar(page);
+  // No se espera a que la cámara cuente 100: se fija el resultado con el enganche de ?demo.
+  await page.evaluate(() =>
+    (window as unknown as { __demo: { despachar: (a: unknown) => void } }).__demo.despachar({
+      tipo: "resultadoPrueba",
+      contados: 98,
+    }),
+  );
+  await expect(page.getByText("Prueba buena")).toBeVisible();
   await revisar(page);
   await page.getByRole("button", { name: /Siguiente/ }).click();
   await page.getByRole("button", { name: "1.500" }).click();

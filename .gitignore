@@ -46,3 +46,4 @@ tests/precision/resultados/
 tests/precision/videos/
 playwright-report/
 test-results/
+apps/web/e2e/.generado/

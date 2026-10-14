@@ -530,12 +530,55 @@ html:not(.modo-laboratorio) body {
   display: block;
 }
 
+.camara-pequena {
+  height: 16dvh;
+}
+
+.cabecera-con-camara {
+  display: grid;
+  gap: var(--hueco);
+}
+
 .camara-linea {
   position: absolute;
   left: 0;
   right: 0;
   top: 50%;
   border-top: 4px dashed #ffd400;
+  pointer-events: none;
+}
+
+.camara-linea-vertical {
+  top: 0;
+  bottom: 0;
+  right: auto;
+  border-top: none;
+  border-left: 4px dashed #ffd400;
+}
+
+/* Mensaje sobre la cámara cuando no está lista; el texto blanco va sobre fondo oscuro. */
+.camara-mensaje {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  align-content: center;
+  gap: 8px 12px;
+  padding: 44px 12px 8px;
+  color: var(--blanco);
+  font-weight: 700;
+  text-align: center;
+}
+
+.camara-mensaje svg {
+  flex: none;
+  font-size: 1.4em;
+}
+
+.camara-mensaje .boton {
+  min-height: var(--toque);
 }
 
 .camara-luz,
@@ -571,6 +614,12 @@ html:not(.modo-laboratorio) body {
   font-weight: 700;
   line-height: 1;
   font-variant-numeric: tabular-nums;
+}
+
+/* «10.000» o más: un poco más chico para que quepa en 360 px. */
+.contador-numero[data-largo="6"],
+.contador-numero[data-largo="7"] {
+  font-size: min(18dvh, 23vw, 8.2rem);
 }
 
 .contador-de {

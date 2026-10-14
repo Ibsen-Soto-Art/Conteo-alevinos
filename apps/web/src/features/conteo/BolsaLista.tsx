@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { navegar } from "../../app/rutas";
 import { useSesion } from "../../app/SesionContexto";
+import { prepararSonido } from "../../shared/avisos";
 import { formatear } from "../../shared/formato";
 import { IconoChulo, IconoDeshacer, IconoSeguir, IconoTerminar } from "../../shared/ui/Iconos";
 import { Pantalla } from "../../shared/ui/Pantalla";
@@ -31,7 +32,11 @@ export function BolsaLista() {
       className="bolsa-lista"
       pie={
         <div className="bolsa-lista-botones">
-          <button type="button" className="boton boton-principal boton-claro" onClick={() => navegar("contando", { reemplazar: true })}>
+          <button type="button" className="boton boton-principal boton-claro" onClick={() => {
+              prepararSonido();
+              navegar("contando", { reemplazar: true });
+            }}
+          >
             <IconoSeguir /> Siguiente bolsa
           </button>
           <div className="fila-botones">
