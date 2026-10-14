@@ -41,7 +41,13 @@ export function Contando() {
       clasePie="pie-columna"
       className={`contando ${cerca ? "contando-cerca" : ""} ${llego ? "contando-llego" : ""}`}
       cabecera={
-        <VistaCamara videoRef={vivo.videoRef} estado={vivo.estado} ajustes={vivo.ajustes} onReintentar={vivo.reintentar}>
+        <VistaCamara
+          className="camara-grande camara-arriba"
+          videoRef={vivo.videoRef}
+          estado={vivo.estado}
+          ajustes={vivo.ajustes}
+          onReintentar={vivo.reintentar}
+        >
           <AvisoLuz luz={vivo.luz} className="camara-luz" />
           <span className="estado camara-bolsa">
             <IconoBolsa /> Bolsa {numeroBolsaAbierta(estado)}

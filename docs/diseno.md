@@ -32,11 +32,15 @@ En este orden:
 
 1. **Inicio:** arriba el nombre de la finca y el aviso «Todo guardado». En el centro un botón enorme «Contar alevinos» con dibujo de pez. Debajo dos botones: «Conteos» y «Ayuda». Abajo una tarjeta con el último conteo.
 2. **Qué pez** (paso 1 de 3): barra de avance y botón Volver. «¿Qué pez va a contar?» con 6 botones grandes (Cachama, Tilapia, Bocachico, Yaque, Pintadillo, Pangasius) y «¿De qué tamaño?» con 3 botones (Pequeño, Mediano, Grande). Botón «Siguiente».
-3. **Prueba de 100** (paso 2 de 3): tres pasos numerados («Cuente 100 alevinos a mano», «Échelos al canal», «Mire cuántos contó la app»). Un círculo grande con el número en vivo, por ejemplo «97 de 100». Resultado en verde «Prueba buena», o en rojo si el factor sale de 0,90 a 1,10, con qué revisar. Botones «Repetir» y «Siguiente».
+3. **Prueba de 100** (paso 2 de 3): mientras cuenta, la cámara grande (ver abajo), la línea «Eche al canal 100 contados a mano.», el número en vivo «37 de 100» y los botones «Volver a cero» y «Ya pasaron todos». Al terminar: los tres pasos numerados («Cuente 100 alevinos a mano», «Échelos al canal», «Mire cuántos contó la app»), un círculo con el resultado, en verde «Prueba buena», o en rojo si el factor sale de 0,90 a 1,10, con qué revisar. Botones «Repetir» y «Siguiente».
 4. **Cuántos por bolsa** (paso 3 de 3): número grande con botones − y + de 100 en 100. Atajos 500, 1.000, 1.500 y 2.000, y la opción «Sin meta: yo cierro cada bolsa». Botón «Empezar a contar».
-5. **Contando:** arriba la cámara (unos 25 % de la pantalla) con la línea de conteo, el aviso «Luz bien» y «Bolsa 3». En el centro el número enorme (cerca de 130 px), «de 1.000», la barra de avance, «Faltan N» y «Total hoy». Cuando falten 50, todo se pone ámbar. Abajo «Pausar» y «Cerrar bolsa».
+5. **Contando:** arriba la cámara grande (ver abajo) con «Luz bien» o «Poca luz» y «Bolsa 3» en las esquinas. Debajo el número grande, «de 1.000», la barra de avance, «Faltan N» y «Total hoy». Cuando falten 50, todo se pone ámbar. Abajo «Volver a cero» y «Pausar», y el botón principal «Cerrar bolsa».
 6. **Bolsa lista:** pantalla verde completa con chulo, «¡Bolsa 3 lista!», el número y «Cierre la compuerta y ponga una bolsa nueva». Botones «Siguiente bolsa», «Deshacer» (unos segundos) y «Terminar».
 7. **Resumen:** «Conteo terminado», total y número de bolsas en grande, una cuadrícula con cada bolsa y «Listo, volver al inicio».
+
+## Cámara grande
+
+En «Prueba de 100» y en «Contando» la cámara va arriba, de lado a lado, y ocupa entre el **40 % y el 50 %** del alto de la pantalla, con la línea de conteo y las marcas de lo que detecta el motor (un círculo por mancha y un punto verde por alevino ya contado). Los avisos van encima de la imagen, en las esquinas. Después de la cámara, lo más visible es el número: con `clamp()`, unos 72 px en 360×640 y unos 110 px en 390×844 o más.
 
 ## Volver a cero
 

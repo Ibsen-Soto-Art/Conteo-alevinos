@@ -20,7 +20,7 @@ test("cuenta, guarda la bolsa y el conteo sigue ahí al recargar", async ({ page
   await page.getByRole("button", { name: /Siguiente/ }).click();
 
   // Prueba de 100: se espera a que la app cuente cerca de 100 y se da por terminada.
-  await expect.poll(() => leer(page, ".circulo-numero"), { timeout: 60_000, intervals: [100] }).toBeGreaterThanOrEqual(96);
+  await expect.poll(() => leer(page, ".prueba-numero"), { timeout: 60_000, intervals: [100] }).toBeGreaterThanOrEqual(96);
   await page.getByRole("button", { name: "Ya pasaron todos" }).click();
   await expect(page.getByText("Prueba buena")).toBeVisible();
   await page.getByRole("button", { name: /Siguiente/ }).click();

@@ -35,12 +35,12 @@ test("Prueba de 100: vuelve a 0 sin salir de la pantalla ni perder el pez", asyn
   await page.evaluate(() =>
     (window as unknown as { __demo: { despachar: (a: unknown) => void } }).__demo.despachar({ tipo: "sumarPrueba", cantidad: 500 }),
   );
-  await expect.poll(() => leer(page, ".circulo-numero")).toBeGreaterThanOrEqual(500);
+  await expect.poll(() => leer(page, ".prueba-numero")).toBeGreaterThanOrEqual(500);
   await page.getByRole("button", { name: "Volver a cero" }).click();
   await page.getByRole("button", { name: "Sí, volver a cero" }).click();
 
   // La cámara falsa sigue contando, pero ya no está cerca de 500.
-  expect(await leer(page, ".circulo-numero")).toBeLessThan(50);
+  expect(await leer(page, ".prueba-numero")).toBeLessThan(50);
   expect(new URL(page.url()).hash).toBe("#/prueba");
   await expect(page.getByText("Paso 2 de 3")).toBeVisible();
 });
@@ -48,6 +48,6 @@ test("Prueba de 100: vuelve a 0 sin salir de la pantalla ni perder el pez", asyn
 test("Prueba de 100: con el conteo en 0 el botón se ve apagado", async ({ page }) => {
   await page.goto("/?demo#/prueba");
   await page.getByRole("button", { name: "Repetir" }).click();
-  await expect(page.locator(".circulo-numero")).toHaveText("0");
+  await expect(page.locator(".prueba-numero")).toHaveText("0");
   await expect(page.getByRole("button", { name: "Volver a cero" })).toBeDisabled();
 });

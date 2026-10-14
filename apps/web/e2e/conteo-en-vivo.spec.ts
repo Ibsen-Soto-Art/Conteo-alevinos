@@ -32,5 +32,5 @@ test("Prueba de 100: el número en vivo sube y habilita «Ya pasaron todos»", a
   const boton = page.getByRole("button", { name: "Ya pasaron todos" });
   await expect(boton).toBeDisabled();
   await expect(boton).toBeEnabled({ timeout: 30_000 });
-  expect(numero(await page.locator(".circulo-numero").textContent())).toBeGreaterThan(0);
+  expect(numero(await page.locator(".prueba-numero").textContent())).toBeGreaterThan(0);
 });

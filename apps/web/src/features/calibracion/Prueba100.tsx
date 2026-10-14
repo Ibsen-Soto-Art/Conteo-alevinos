@@ -32,13 +32,14 @@ export function Prueba100() {
 
   return (
     <Pantalla
+      className={terminada ? "" : "prueba-viva"}
       clasePie={terminada ? "" : "pie-columna"}
       cabecera={
         <div className="cabecera-con-camara">
           <BarraPasos paso={2} onVolver={() => navegar("pez")} />
           {!terminada && (
             <VistaCamara
-              className="camara-pequena"
+              className="camara-grande"
               videoRef={vivo.videoRef}
               estado={vivo.estado}
               ajustes={vivo.ajustes}
@@ -85,22 +86,29 @@ export function Prueba100() {
         )
       }
     >
-      <h2 className="pregunta">Prueba de 100</h2>
-      <ol className="pasos-numerados">
-        {PASOS.map((p, i) => (
-          <li key={p}>
-            <span className="numero-paso">{i + 1}</span>
-            {p}
-          </li>
-        ))}
-      </ol>
-
-      <div className="circulo-zona">
+      {!terminada ? (
+        <>
+          {/* Con la cámara grande no caben los tres pasos: va una sola línea (los pasos salen en el resultado y en Ayuda). */}
+          <p className="instruccion-corta">Eche al canal 100 contados a mano.</p>
+          <div className="numero-vivo">
+            <output className="contador-numero prueba-numero" aria-live="polite">
+              {enVivo}
+            </output>
+            <span className="contador-de">de {MANO}</span>
+          </div>
+        </>
+      ) : (
+        <>
+          <h2 className="pregunta">Prueba de 100</h2>
+          <PasosNumerados />
+          <div className="circulo-zona">
         <div className={`circulo ${resultado ? (resultado.ok ? "circulo-bien" : "circulo-mal") : ""}`}>
           <strong className="circulo-numero">{contados}</strong>
           <span className="circulo-de">de {MANO}</span>
         </div>
       </div>
+        </>
+      )}
 
       {resultado &&
         (resultado.ok ? (
@@ -117,5 +125,18 @@ export function Prueba100() {
           </div>
         ))}
     </Pantalla>
+  );
+}
+
+function PasosNumerados() {
+  return (
+    <ol className="pasos-numerados">
+      {PASOS.map((p, i) => (
+        <li key={p}>
+          <span className="numero-paso">{i + 1}</span>
+          {p}
+        </li>
+      ))}
+    </ol>
   );
 }

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode, type RefObject } from "react";
+import { useMotorCompartido } from "../../app/MotorContexto";
 import { IconoAviso, IconoProblema, IconoSol } from "../../shared/ui/Iconos";
-import { flujoVertical, lineaEnVista, type Controles } from "./protocolo";
+import { flujoVertical, lineaEnVista, puntoEnVista, type Controles, type MensajeDelMotor } from "./protocolo";
 import type { EstadoCamara, Luz } from "./useConteoEnVivo";
 
 const MENSAJES: Record<Exclude<EstadoCamara, "lista">, string> = {
@@ -10,7 +11,45 @@ const MENSAJES: Record<Exclude<EstadoCamara, "lista">, string> = {
   error: "No se pudo abrir la cámara",
 };
 
-/** La cámara con la línea de conteo encima, donde de verdad la ve el motor. */
+const COLOR_MANCHA = "#00e5ff";
+const COLOR_CONTADO = "#39ff6a";
+
+/** Dibuja lo que ve el motor: un círculo por mancha y un punto verde por alevino ya contado. */
+function dibujarMarcas(
+  lienzo: HTMLCanvasElement,
+  r: Extract<MensajeDelMotor, { tipo: "resultado" }>,
+  vista: { ancho: number; alto: number },
+) {
+  const ctx = lienzo.getContext("2d");
+  if (!ctx) return;
+  const ppp = window.devicePixelRatio || 1;
+  if (lienzo.width !== Math.round(vista.ancho * ppp) || lienzo.height !== Math.round(vista.alto * ppp)) {
+    lienzo.width = Math.round(vista.ancho * ppp);
+    lienzo.height = Math.round(vista.alto * ppp);
+  }
+  ctx.setTransform(ppp, 0, 0, ppp, 0, 0);
+  ctx.clearRect(0, 0, vista.ancho, vista.alto);
+  const proceso = { ancho: r.ancho, alto: r.alto };
+
+  ctx.lineWidth = 3;
+  ctx.strokeStyle = COLOR_MANCHA;
+  for (const d of r.detecciones) {
+    const p = puntoEnVista(d.x, d.y, proceso, vista);
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, Math.sqrt(d.area / Math.PI) * p.escala + 5, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+  ctx.fillStyle = COLOR_CONTADO;
+  for (const t of r.pistas) {
+    if (!t.contada) continue;
+    const p = puntoEnVista(t.x, t.y, proceso, vista);
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, 6, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+/** La cámara con la línea de conteo y las marcas de lo que detecta, donde de verdad lo ve el motor. */
 export function VistaCamara({
   videoRef,
   estado,
@@ -27,6 +66,8 @@ export function VistaCamara({
   children?: ReactNode;
 }) {
   const caja = useRef<HTMLDivElement>(null);
+  const marcas = useRef<HTMLCanvasElement>(null);
+  const motor = useMotorCompartido();
   const [vista, setVista] = useState({ ancho: 0, alto: 0 });
   const [video, setVideo] = useState({ ancho: 0, alto: 0 });
 
@@ -39,6 +80,14 @@ export function VistaCamara({
     observador.observe(el);
     return () => observador.disconnect();
   }, []);
+
+  // Cada resultado del motor se dibuja encima de la imagen.
+  useEffect(() => {
+    if (estado !== "lista") return;
+    return motor.escuchar((r) => {
+      if (r.tipo === "resultado" && marcas.current && vista.ancho > 0) dibujarMarcas(marcas.current, r, vista);
+    });
+  }, [motor, estado, vista]);
 
   const vertical = flujoVertical(ajustes.sentido);
   const linea =
@@ -56,6 +105,7 @@ export function VistaCamara({
         autoPlay
         onLoadedMetadata={(e) => setVideo({ ancho: e.currentTarget.videoWidth, alto: e.currentTarget.videoHeight })}
       />
+      {estado === "lista" && <canvas ref={marcas} className="camara-marcas" aria-hidden="true" />}
       {lineaVisible && (
         <div
           className={vertical ? "camara-linea" : "camara-linea camara-linea-vertical"}

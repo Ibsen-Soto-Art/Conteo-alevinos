@@ -40,7 +40,11 @@ async function medir(pagina: Page): Promise<Medida> {
           const b = el.getBoundingClientRect();
           return `${nombre(el)} abajo=${b.bottom.toFixed(0)}/${alto} derecha=${b.right.toFixed(0)}/${ancho}`;
         }),
-      recortadas: [...document.querySelectorAll(".app, .pantalla, .pantalla-centro, .pantalla-pie, .pantalla-cabecera")]
+      recortadas: [
+        ...document.querySelectorAll(
+          ".app, .pantalla, .pantalla-centro, .pantalla-pie, .pantalla-cabecera, .contador, .numero-vivo, .circulo-zona, .bolsa-lista-centro",
+        ),
+      ]
         .filter((el) => el.scrollHeight > el.clientHeight + 1)
         .map(nombre),
       textoCortado: [...document.querySelectorAll(".app button, .app .estado")]
@@ -89,6 +93,24 @@ const PANTALLAS: { nombre: string; ruta: string; antes?: (p: Page) => Promise<vo
     antes: (p) => p.getByRole("button", { name: /Sin meta/ }).click(),
   },
   { nombre: "contando", ruta: "contando" },
+  {
+    nombre: "contando: cerca de la meta (ámbar)",
+    ruta: "contando",
+    antes: async (p) => {
+      await p.getByRole("button", { name: "Pausar" }).click();
+      await p.getByRole("button", { name: "Seguir" }).click();
+      await despachar(p, { tipo: "sumar", cantidad: 195 });
+      await expect(p.getByText(/más despacio/)).toBeVisible();
+    },
+  },
+  {
+    nombre: "contando: llegó a la meta",
+    ruta: "contando",
+    antes: async (p) => {
+      await despachar(p, { tipo: "sumar", cantidad: 400 });
+      await expect(p.getByText(/Llegó/)).toBeVisible();
+    },
+  },
   {
     nombre: "contando: ¿volver a cero?",
     ruta: "contando",

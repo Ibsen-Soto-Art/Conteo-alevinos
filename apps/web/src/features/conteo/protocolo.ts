@@ -60,6 +60,24 @@ export function lineaEnVista(
   return (Math.min(100, Math.max(0, porcentaje)) / 100) * largoVideo - (largoVideo - largoVista) / 2;
 }
 
+/**
+ * Pasa un punto del cuadro procesado (320 px) a la vista que muestra el video con
+ * `object-fit: cover`. Devuelve también la escala, para el tamaño de las marcas.
+ */
+export function puntoEnVista(
+  x: number,
+  y: number,
+  proceso: { ancho: number; alto: number },
+  vista: { ancho: number; alto: number },
+): { x: number; y: number; escala: number } {
+  const escala = Math.max(vista.ancho / proceso.ancho, vista.alto / proceso.alto);
+  return {
+    x: x * escala - (proceso.ancho * escala - vista.ancho) / 2,
+    y: y * escala - (proceso.alto * escala - vista.alto) / 2,
+    escala,
+  };
+}
+
 export function configuracionMotor(c: Controles, ancho: number, alto: number): ConfiguracionMotor {
   return {
     detector: { umbral: c.umbral, areaMinima: c.areaMinima, areaTipica: null },

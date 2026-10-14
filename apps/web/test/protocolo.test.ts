@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CONTROLES_INICIALES, configuracionMotor, lineaEnVista, posicionLineaPx, tamanoProceso } from "../src/features/conteo/protocolo";
+import { CONTROLES_INICIALES, configuracionMotor, lineaEnVista, posicionLineaPx, puntoEnVista, tamanoProceso } from "../src/features/conteo/protocolo";
 
 describe("tamanoProceso", () => {
   it("reduce un video horizontal a 320 px de lado mayor", () => {
@@ -58,5 +58,20 @@ describe("lineaEnVista", () => {
 
   it("con flujo horizontal usa el ancho", () => {
     expect(lineaEnVista(25, "derecha", { ancho: 1280, alto: 720 }, { ancho: 640, alto: 360 })).toBe(160);
+  });
+});
+
+describe("puntoEnVista", () => {
+  it("lleva un punto del cuadro de 180×320 a una vista ancha y baja (recortada arriba y abajo)", () => {
+    // escala = max(360/180, 300/320) = 2; el cuadro mide 360×640 y se ve su centro (170 px arriba y abajo fuera)
+    expect(puntoEnVista(90, 160, { ancho: 180, alto: 320 }, { ancho: 360, alto: 300 })).toEqual({ x: 180, y: 150, escala: 2 });
+    expect(puntoEnVista(0, 85, { ancho: 180, alto: 320 }, { ancho: 360, alto: 300 })).toEqual({ x: 0, y: 0, escala: 2 });
+  });
+
+  it("coincide con la línea de conteo dibujada en la misma vista", () => {
+    const proceso = { ancho: 180, alto: 320 };
+    const vista = { ancho: 360, alto: 300 };
+    const linea = lineaEnVista(60, "abajo", { ancho: 720, alto: 1280 }, vista);
+    expect(puntoEnVista(90, 0.6 * 320, proceso, vista).y).toBeCloseTo(linea, 6);
   });
 });
