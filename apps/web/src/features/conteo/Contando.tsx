@@ -1,18 +1,21 @@
 import { useEffect, useRef } from "react";
 import { navegar } from "../../app/rutas";
-import { AVISO_FALTAN, numeroBolsaAbierta, totalHoy } from "../../app/sesion";
+import { AVISO_FALTAN, enBolsa as alevinosEnBolsa, numeroBolsaAbierta, totalHoy } from "../../app/sesion";
 import { useSesion } from "../../app/SesionContexto";
 import { avisarMeta } from "../../shared/avisos";
 import { formatear } from "../../shared/formato";
 import { IconoAviso, IconoBolsa, IconoChulo, IconoPausa, IconoSeguir } from "../../shared/ui/Iconos";
 import { Pantalla } from "../../shared/ui/Pantalla";
+import { Redirigir } from "../../shared/ui/Redirigir";
 import { useWakeLock } from "../../shared/useWakeLock";
 import { useConteoEnVivo } from "./useConteoEnVivo";
 import { AvisoLuz, VistaCamara } from "./VistaCamara";
 
 export function Contando() {
-  const { estado, despachar } = useSesion();
-  const { meta, enBolsa, pausado } = estado;
+  const { estado, despachar, acciones } = useSesion();
+  const { meta, pausado } = estado;
+  // Lo que se muestra y se compara con la meta ya va corregido con el factor de la prueba de 100.
+  const enBolsa = alevinosEnBolsa(estado);
   const vivo = useConteoEnVivo({ activo: true, onSumados: (n) => despachar({ tipo: "sumar", cantidad: n }) });
   useWakeLock(true);
 
@@ -27,6 +30,8 @@ export function Contando() {
     if (meta !== null && antes.current < meta && enBolsa >= meta) avisarMeta();
     antes.current = enBolsa;
   }, [enBolsa, meta]);
+
+  if (!estado.conteo) return <Redirigir a="inicio" />;
 
   return (
     <Pantalla
@@ -60,9 +65,9 @@ export function Contando() {
           <button
             type="button"
             className="boton boton-principal"
+            disabled={enBolsa === 0}
             onClick={() => {
-              despachar({ tipo: "cerrarBolsa" });
-              navegar("bolsa-lista", { reemplazar: true });
+              if (acciones.cerrarBolsa()) navegar("bolsa-lista", { reemplazar: true });
             }}
           >
             <IconoBolsa /> Cerrar bolsa

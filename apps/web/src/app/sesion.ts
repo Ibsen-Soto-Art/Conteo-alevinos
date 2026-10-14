@@ -1,18 +1,18 @@
+import {
+  cantidadBolsa,
+  descartarBolsa,
+  inicialDeBolsa,
+  nuevaBolsa,
+  siguienteNumero,
+  totalConteo,
+  type Bolsa,
+  type Conteo,
+  type Lote,
+} from "@contador/domain";
 import type { Especie, Talla } from "../shared/catalogo";
+import type { ConteoGuardado } from "../shared/datos/repositorio";
 
-export interface BolsaCerrada {
-  numero: number;
-  cantidad: number;
-}
-
-export interface ConteoGuardado {
-  id: string;
-  /** Fecha ISO de cuando se terminó. */
-  fecha: string;
-  especie: Especie;
-  talla: Talla;
-  bolsas: number[];
-}
+export type { ConteoGuardado };
 
 export interface EstadoSesion {
   finca: string;
@@ -22,15 +22,21 @@ export interface EstadoSesion {
   pruebaEnVivo: number;
   /** Lo que contó la app en la prueba de 100 al terminarla; null mientras no se haya hecho. */
   pruebaApp: number | null;
+  /** Se crea al aceptar una prueba de 100 buena; guarda el factor de calibración. */
+  lote: Lote | null;
   /** Alevinos por bolsa; null = sin meta, el usuario cierra cada bolsa. */
   meta: number | null;
-  /** Alevinos en la bolsa abierta. */
-  enBolsa: number;
-  /** Bolsas cerradas en el conteo de hoy. */
-  bolsas: BolsaCerrada[];
+  /** Se abre al empezar a contar y se cierra al terminar. */
+  conteo: Conteo | null;
+  /** Lo que contó la app en la bolsa abierta, sin corregir. */
+  crudo: number;
+  /** Bolsas cerradas del conteo abierto, incluidas las descartadas. */
+  bolsas: Bolsa[];
   pausado: boolean;
   /** Conteos terminados, el más reciente primero. */
   historial: ConteoGuardado[];
+  /** Si lo último que se intentó guardar en el teléfono quedó guardado. */
+  guardado: boolean;
 }
 
 export type Accion =
@@ -40,13 +46,17 @@ export type Accion =
   | { tipo: "sumarPrueba"; cantidad: number }
   | { tipo: "resultadoPrueba"; contados: number }
   | { tipo: "repetirPrueba" }
+  | { tipo: "aceptarPrueba"; lote: Lote }
   | { tipo: "fijarMeta"; meta: number | null }
+  | { tipo: "empezarConteo"; conteo: Conteo }
   | { tipo: "sumar"; cantidad: number }
   | { tipo: "pausar" }
   | { tipo: "seguir" }
-  | { tipo: "cerrarBolsa" }
+  | { tipo: "cerrarBolsa"; id: string; cerradaEn: string }
   | { tipo: "deshacerCierre" }
-  | { tipo: "terminar"; id: string; fecha: string };
+  | { tipo: "terminar"; fin: string }
+  | { tipo: "cargarHistorial"; historial: ConteoGuardado[] }
+  | { tipo: "guardado"; ok: boolean };
 
 export const META_PASO = 100;
 export const META_MINIMA = 100;
@@ -59,18 +69,59 @@ export function cambiarMeta(meta: number, delta: number): number {
   return Math.min(META_MAXIMA, Math.max(META_MINIMA, meta + delta));
 }
 
-export function totalHoy(e: EstadoSesion): number {
-  return e.bolsas.reduce((s, b) => s + b.cantidad, 0) + e.enBolsa;
+export function factor(e: EstadoSesion): number {
+  return e.lote?.calibracion?.factor ?? 1;
 }
 
 export function numeroBolsaAbierta(e: EstadoSesion): number {
-  return e.bolsas.length + 1;
+  return siguienteNumero(e.bolsas);
+}
+
+/** Alevinos en la bolsa abierta: los de la prueba (si es la primera) más lo de la app corregido. */
+export function enBolsa(e: EstadoSesion): number {
+  const inicial = e.lote ? inicialDeBolsa(numeroBolsaAbierta(e), e.lote) : 0;
+  return cantidadBolsa(inicial, e.crudo, factor(e));
+}
+
+export function totalHoy(e: EstadoSesion): number {
+  return totalConteo(e.bolsas) + enBolsa(e);
+}
+
+/** La bolsa que se guardaría al cerrar ahora. */
+export function bolsaAlCerrar(e: EstadoSesion, id: string, cerradaEn: string): Bolsa | null {
+  if (!e.conteo) return null;
+  const numero = numeroBolsaAbierta(e);
+  return nuevaBolsa({
+    id,
+    conteoId: e.conteo.id,
+    numero,
+    inicial: e.lote ? inicialDeBolsa(numero, e.lote) : 0,
+    crudo: e.crudo,
+    factor: factor(e),
+    cerradaEn,
+  });
+}
+
+/** La última bolsa válida, que es la que «Deshacer» descarta. */
+export function ultimaBolsaValida(e: EstadoSesion): Bolsa | undefined {
+  return e.bolsas.findLast((b) => b.estado === "valida");
 }
 
 export function reducir(e: EstadoSesion, a: Accion): EstadoSesion {
   switch (a.tipo) {
     case "empezar":
-      return { ...e, especie: null, talla: null, pruebaEnVivo: 0, pruebaApp: null, enBolsa: 0, bolsas: [], pausado: false };
+      return {
+        ...e,
+        especie: null,
+        talla: null,
+        pruebaEnVivo: 0,
+        pruebaApp: null,
+        lote: null,
+        conteo: null,
+        crudo: 0,
+        bolsas: [],
+        pausado: false,
+      };
     case "elegirEspecie":
       return { ...e, especie: a.especie };
     case "elegirTalla":
@@ -81,37 +132,49 @@ export function reducir(e: EstadoSesion, a: Accion): EstadoSesion {
       return { ...e, pruebaApp: a.contados };
     case "repetirPrueba":
       return { ...e, pruebaEnVivo: 0, pruebaApp: null };
+    case "aceptarPrueba":
+      return { ...e, lote: a.lote };
     case "fijarMeta":
       return { ...e, meta: a.meta };
+    case "empezarConteo":
+      return { ...e, conteo: a.conteo, crudo: 0, bolsas: [], pausado: false };
     case "sumar":
-      return e.pausado ? e : { ...e, enBolsa: e.enBolsa + a.cantidad };
+      return e.pausado || !e.conteo ? e : { ...e, crudo: e.crudo + a.cantidad };
     case "pausar":
       return { ...e, pausado: true };
     case "seguir":
       return { ...e, pausado: false };
-    case "cerrarBolsa":
+    case "cerrarBolsa": {
+      const bolsa = bolsaAlCerrar(e, a.id, a.cerradaEn);
+      if (!bolsa) return e;
+      return { ...e, bolsas: [...e.bolsas, bolsa], crudo: 0, pausado: false };
+    }
+    case "deshacerCierre": {
+      const ultima = ultimaBolsaValida(e);
+      if (!ultima) return e;
+      // La bolsa no se borra: queda descartada y su conteo vuelve al contador.
       return {
         ...e,
-        bolsas: [...e.bolsas, { numero: numeroBolsaAbierta(e), cantidad: e.enBolsa }],
-        enBolsa: 0,
-        pausado: false,
+        bolsas: e.bolsas.map((b) => (b.id === ultima.id ? descartarBolsa(b) : b)),
+        crudo: ultima.crudo,
       };
-    case "deshacerCierre": {
-      const ultima = e.bolsas.at(-1);
-      if (!ultima) return e;
-      return { ...e, bolsas: e.bolsas.slice(0, -1), enBolsa: ultima.cantidad };
     }
     case "terminar": {
-      if (!e.especie || !e.talla || e.bolsas.length === 0) return e;
+      if (!e.conteo || !e.lote || totalConteo(e.bolsas) === 0) return e;
+      const validas = e.bolsas.filter((b) => b.estado === "valida");
       const conteo: ConteoGuardado = {
-        id: a.id,
-        fecha: a.fecha,
-        especie: e.especie,
-        talla: e.talla,
-        bolsas: e.bolsas.map((b) => b.cantidad),
+        id: e.conteo.id,
+        fecha: a.fin,
+        especie: e.lote.especie as Especie,
+        talla: e.lote.talla as Talla,
+        bolsas: validas.map((b) => b.cantidad),
       };
-      return { ...e, historial: [conteo, ...e.historial], bolsas: [], enBolsa: 0, pausado: false };
+      return { ...e, historial: [conteo, ...e.historial], conteo: null, bolsas: [], crudo: 0, pausado: false };
     }
+    case "cargarHistorial":
+      return { ...e, historial: a.historial };
+    case "guardado":
+      return { ...e, guardado: a.ok };
   }
 }
 
@@ -122,31 +185,42 @@ export function estadoInicial(): EstadoSesion {
     talla: null,
     pruebaEnVivo: 0,
     pruebaApp: null,
+    lote: null,
     meta: META_INICIAL,
-    enBolsa: 0,
+    conteo: null,
+    crudo: 0,
     bolsas: [],
     pausado: false,
     historial: [],
+    guardado: true,
   };
 }
 
-/** Datos de ejemplo para ver las pantallas mientras no hay base de datos ni motor conectados. */
+/** Datos de ejemplo (?demo) para ver las pantallas sin hacer un conteo de verdad. */
 export function estadoDeEjemplo(ahora = new Date()): EstadoSesion {
   const ayer = new Date(ahora.getTime() - 86_400_000);
   ayer.setHours(15, 40, 0, 0);
+  const lote: Lote = {
+    id: "ejemplo-lote",
+    especie: "cachama",
+    talla: "pequeno",
+    creadoEn: ahora.toISOString(),
+    calibracion: { pasadas: [{ contadosAMano: 100, contadosPorApp: 97 }], factor: 100 / 97 },
+  };
+  const conteo: Conteo = { id: "ejemplo-conteo", loteId: lote.id, metaPorBolsa: META_INICIAL, inicio: ahora.toISOString(), fin: null };
+  const bolsa = (numero: number, inicial: number, crudo: number): Bolsa =>
+    nuevaBolsa({ id: `ejemplo-bolsa-${numero}`, conteoId: conteo.id, numero, inicial, crudo, factor: 100 / 97, cerradaEn: ahora.toISOString() });
   return {
+    ...estadoInicial(),
     finca: "Finca La Esperanza",
     especie: "cachama",
     talla: "pequeno",
     pruebaEnVivo: 97,
     pruebaApp: 97,
-    meta: META_INICIAL,
-    enBolsa: 763,
-    bolsas: [
-      { numero: 1, cantidad: 1003 },
-      { numero: 2, cantidad: 1001 },
-    ],
-    pausado: false,
+    lote,
+    conteo,
+    crudo: 740,
+    bolsas: [bolsa(1, 100, 876), bolsa(2, 0, 971)],
     historial: [
       {
         id: "ejemplo-1",

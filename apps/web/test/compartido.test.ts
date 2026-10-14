@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { rutaDesdeHash } from "../src/app/rutas";
-import { cuando, formatear } from "../src/shared/formato";
+import { bolsas, cuando, formatear } from "../src/shared/formato";
 import { paginar } from "../src/shared/ui/Paginador";
 
 describe("formatear", () => {
@@ -8,6 +8,13 @@ describe("formatear", () => {
     expect(formatear(1000)).toBe("1.000");
     expect(formatear(12450)).toBe("12.450");
     expect(formatear(97)).toBe("97");
+  });
+});
+
+describe("bolsas", () => {
+  it("dice «1 bolsa» y «12 bolsas»", () => {
+    expect(bolsas(1)).toBe("1 bolsa");
+    expect(bolsas(12)).toBe("12 bolsas");
   });
 });
 

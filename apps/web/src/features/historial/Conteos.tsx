@@ -2,7 +2,7 @@ import { useState } from "react";
 import { navegar } from "../../app/rutas";
 import { useSesion } from "../../app/SesionContexto";
 import { nombreEspecie, nombreTalla } from "../../shared/catalogo";
-import { cuando, formatear } from "../../shared/formato";
+import { bolsas, cuando, formatear } from "../../shared/formato";
 import { IconoInicio } from "../../shared/ui/Iconos";
 import { Pantalla } from "../../shared/ui/Pantalla";
 import { Paginador, paginar } from "../../shared/ui/Paginador";
@@ -32,7 +32,7 @@ export function Conteos() {
               <span className="tarjeta-titulo">{cuando(new Date(c.fecha))}</span>
               <strong className="tarjeta-numero">{formatear(c.bolsas.reduce((s, b) => s + b, 0))} alevinos</strong>
               <span>
-                {nombreEspecie(c.especie)} {nombreTalla(c.talla)} · {c.bolsas.length} bolsas
+                {nombreEspecie(c.especie)} {nombreTalla(c.talla)} · {bolsas(c.bolsas.length)}
               </span>
             </li>
           ))}

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { navegar } from "../../app/rutas";
+import { ultimaBolsaValida } from "../../app/sesion";
 import { useSesion } from "../../app/SesionContexto";
 import { prepararSonido } from "../../shared/avisos";
 import { formatear } from "../../shared/formato";
@@ -11,10 +12,10 @@ import { Redirigir } from "../../shared/ui/Redirigir";
 export const SEGUNDOS_DESHACER = 8;
 
 export function BolsaLista() {
-  const { estado, despachar } = useSesion();
+  const { estado, acciones } = useSesion();
   // Se recuerda la bolsa al abrir la pantalla: al terminar o deshacer, la lista cambia
   // antes de salir de aquí y no debe disparar la redirección al inicio.
-  const [ultima] = useState(() => estado.bolsas.at(-1));
+  const [ultima] = useState(() => ultimaBolsaValida(estado));
   const [quedan, setQuedan] = useState(SEGUNDOS_DESHACER);
 
   useEffect(() => {
@@ -45,7 +46,7 @@ export function BolsaLista() {
                 type="button"
                 className="boton boton-borde-claro"
                 onClick={() => {
-                  despachar({ tipo: "deshacerCierre" });
+                  acciones.deshacerCierre();
                   navegar("contando", { reemplazar: true });
                 }}
               >
@@ -56,8 +57,7 @@ export function BolsaLista() {
               type="button"
               className="boton boton-borde-claro"
               onClick={() => {
-                despachar({ tipo: "terminar", id: crypto.randomUUID(), fecha: new Date().toISOString() });
-                navegar("resumen", { reemplazar: true });
+                if (acciones.terminar()) navegar("resumen", { reemplazar: true });
               }}
             >
               <IconoTerminar /> Terminar

@@ -10,6 +10,7 @@ import { QuePez } from "../features/lotes/QuePez";
 import { AvisoGirar } from "../shared/ui/AvisoGirar";
 import { useRuta, type Ruta } from "./rutas";
 import { MotorProveedor } from "./MotorContexto";
+import { crearRepositorio, repositorioDeEjemplo } from "../shared/datos/repositorio";
 import { estadoDeEjemplo, estadoInicial } from "./sesion";
 import { SesionProveedor, useSesion } from "./SesionContexto";
 import { useEffect } from "react";
@@ -27,22 +28,28 @@ const PANTALLAS: Record<Ruta, () => React.JSX.Element> = {
   ayuda: Ayuda,
 };
 
-/** Con `?demo` en la dirección la app arranca con datos de ejemplo (para ver y probar las pantallas). */
-function modoDemo() {
-  return new URLSearchParams(location.search).has("demo");
-}
+/**
+ * Con `?demo` en la dirección la app arranca con datos de ejemplo (para ver y probar las
+ * pantallas) y no guarda nada, así no mezcla el ejemplo con los conteos reales.
+ */
+const DEMO = new URLSearchParams(location.search).has("demo");
+const repositorio = DEMO ? repositorioDeEjemplo : crearRepositorio();
 
 export function App() {
   const ruta = useRuta();
   const Pantalla = PANTALLAS[ruta];
   return (
-    <SesionProveedor inicial={modoDemo() ? estadoDeEjemplo() : estadoInicial()}>
+    <SesionProveedor
+      inicial={DEMO ? estadoDeEjemplo() : estadoInicial()}
+      repo={repositorio}
+      cargarAlIniciar={!DEMO}
+    >
       <MotorProveedor>
         <div className="app" data-ruta={ruta}>
           <Pantalla key={ruta} />
         </div>
         <AvisoGirar />
-        {modoDemo() && <EngancheDemo />}
+        {DEMO && <EngancheDemo />}
       </MotorProveedor>
     </SesionProveedor>
   );

@@ -2,8 +2,8 @@ import { useMotorCompartido } from "../../app/MotorContexto";
 import { navegar } from "../../app/rutas";
 import { useSesion } from "../../app/SesionContexto";
 import { nombreEspecie, nombreTalla } from "../../shared/catalogo";
-import { cuando, formatear } from "../../shared/formato";
-import { DibujoPez, IconoAyuda, IconoChulo, IconoLista } from "../../shared/ui/Iconos";
+import { bolsas, cuando, formatear } from "../../shared/formato";
+import { DibujoPez, IconoAyuda, IconoChulo, IconoLista, IconoProblema } from "../../shared/ui/Iconos";
 import { Pantalla } from "../../shared/ui/Pantalla";
 
 export function Inicio() {
@@ -17,9 +17,15 @@ export function Inicio() {
       cabecera={
         <div className="inicio-cabecera">
           <h1 className="finca">{estado.finca}</h1>
-          <span className="estado estado-exito">
-            <IconoChulo /> Todo guardado
-          </span>
+          {estado.guardado ? (
+            <span className="estado estado-exito">
+              <IconoChulo /> Todo guardado
+            </span>
+          ) : (
+            <span className="estado estado-problema">
+              <IconoProblema /> No se pudo guardar
+            </span>
+          )}
         </div>
       }
       pie={
@@ -28,7 +34,7 @@ export function Inicio() {
             <span className="tarjeta-titulo">Último conteo · {cuando(new Date(ultimo.fecha))}</span>
             <strong className="tarjeta-numero">{formatear(ultimo.bolsas.reduce((s, b) => s + b, 0))} alevinos</strong>
             <span>
-              {nombreEspecie(ultimo.especie)} {nombreTalla(ultimo.talla)} · {ultimo.bolsas.length} bolsas
+              {nombreEspecie(ultimo.especie)} {nombreTalla(ultimo.talla)} · {bolsas(ultimo.bolsas.length)}
             </span>
           </div>
         )

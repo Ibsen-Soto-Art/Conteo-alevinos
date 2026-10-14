@@ -15,6 +15,7 @@
     "@contador/counting-engine": "workspace:*",
     "@contador/domain": "workspace:*",
     "@fontsource/atkinson-hyperlegible": "^5.3.0",
+    "dexie": "^4.4.6",
     "react": "^19.3.0",
     "react-dom": "^19.3.0"
   },
@@ -25,6 +26,7 @@
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-basic-ssl": "^2.3.0",
     "@vitejs/plugin-react": "^6.1.2",
+    "fake-indexeddb": "^6.2.5",
     "typescript": "^7.0.2",
     "vite": "^8.3.4",
     "vitest": "^5.0.4"

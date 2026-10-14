@@ -1,19 +1,21 @@
 import { calcularCalibracion } from "@contador/domain";
+import { PRUEBA_A_MANO } from "../../app/acciones";
 import { navegar } from "../../app/rutas";
 import { useSesion } from "../../app/SesionContexto";
 import { BarraPasos } from "../../shared/ui/BarraPasos";
 import { IconoChulo, IconoDeshacer, IconoProblema, IconoSiguiente } from "../../shared/ui/Iconos";
 import { Pantalla } from "../../shared/ui/Pantalla";
+import { Redirigir } from "../../shared/ui/Redirigir";
 import { useWakeLock } from "../../shared/useWakeLock";
 import { useConteoEnVivo } from "../conteo/useConteoEnVivo";
 import { AvisoLuz, VistaCamara } from "../conteo/VistaCamara";
 
-const MANO = 100;
+const MANO = PRUEBA_A_MANO;
 
 const PASOS = ["Cuente 100 alevinos a mano", "Échelos al canal", "Mire cuántos contó la app"];
 
 export function Prueba100() {
-  const { estado, despachar } = useSesion();
+  const { estado, despachar, acciones } = useSesion();
   const terminada = estado.pruebaApp !== null;
   const enVivo = estado.pruebaEnVivo;
   const vivo = useConteoEnVivo({ activo: !terminada, onSumados: (n) => despachar({ tipo: "sumarPrueba", cantidad: n }) });
@@ -22,6 +24,8 @@ export function Prueba100() {
   const contados = estado.pruebaApp ?? enVivo;
   const resultado = terminada ? calcularCalibracion([{ contadosAMano: MANO, contadosPorApp: contados }]) : null;
   const repetir = () => despachar({ tipo: "repetirPrueba" });
+
+  if (!estado.especie || !estado.talla) return <Redirigir a="pez" />;
 
   return (
     <Pantalla
@@ -56,7 +60,7 @@ export function Prueba100() {
             <button type="button" className="boton boton-secundario" onClick={repetir}>
               <IconoDeshacer /> Repetir
             </button>
-            <button type="button" className="boton boton-principal" onClick={() => navegar("meta")}>
+            <button type="button" className="boton boton-principal" onClick={() => acciones.aceptarPrueba() && navegar("meta")}>
               Siguiente <IconoSiguiente />
             </button>
           </>

@@ -1,56 +1,114 @@
+import type { Conteo, Lote } from "@contador/domain";
 import { describe, expect, it } from "vitest";
-import { cambiarMeta, estadoDeEjemplo, estadoInicial, numeroBolsaAbierta, reducir, totalHoy, type EstadoSesion } from "../src/app/sesion";
+import {
+  cambiarMeta,
+  enBolsa,
+  estadoDeEjemplo,
+  estadoInicial,
+  numeroBolsaAbierta,
+  reducir,
+  totalHoy,
+  type Accion,
+  type EstadoSesion,
+} from "../src/app/sesion";
 
-const vacio: EstadoSesion = { ...estadoDeEjemplo(), especie: "cachama", talla: "pequeno", enBolsa: 0, bolsas: [], historial: [] };
+const lote: Lote = {
+  id: "l1",
+  especie: "cachama",
+  talla: "pequeno",
+  creadoEn: "2026-10-14T08:00:00.000Z",
+  calibracion: { pasadas: [{ contadosAMano: 100, contadosPorApp: 97 }], factor: 100 / 97 },
+};
+const conteo: Conteo = { id: "c1", loteId: "l1", metaPorBolsa: 1000, inicio: "2026-10-14T08:05:00.000Z", fin: null };
+
+/** Sesión lista para contar: prueba de 100 aceptada (97 de 100) y conteo abierto. */
+function contando(): EstadoSesion {
+  return aplicar(
+    { ...estadoInicial(), especie: "cachama", talla: "pequeno" },
+    { tipo: "aceptarPrueba", lote },
+    { tipo: "empezarConteo", conteo },
+  );
+}
+
+function aplicar(e: EstadoSesion, ...acciones: Accion[]) {
+  return acciones.reduce(reducir, e);
+}
+
+const cerrar = (n: number): Accion => ({ tipo: "cerrarBolsa", id: `b${n}`, cerradaEn: `2026-10-14T09:0${n}:00.000Z` });
 
 describe("sesión de conteo", () => {
-  it("empezar limpia la elección y las bolsas, pero no el historial", () => {
-    const e = reducir(estadoDeEjemplo(), { tipo: "empezar" });
-    expect(e).toMatchObject({ especie: null, talla: null, pruebaApp: null, enBolsa: 0, bolsas: [] });
-    expect(e.historial).toHaveLength(1);
+  it("los 100 de la prueba ya están en la primera bolsa al empezar", () => {
+    expect(enBolsa(contando())).toBe(100);
   });
 
-  it("cerrar bolsa la guarda con su número y pone el contador en cero", () => {
-    let e = reducir(vacio, { tipo: "sumar", cantidad: 1003 });
-    e = reducir(e, { tipo: "cerrarBolsa" });
-    expect(e.bolsas).toEqual([{ numero: 1, cantidad: 1003 }]);
-    expect(e.enBolsa).toBe(0);
+  it("lo que cuenta la app se corrige con el factor de la prueba", () => {
+    // 873 crudos × 100/97 = 900, más los 100 de la prueba
+    expect(enBolsa(aplicar(contando(), { tipo: "sumar", cantidad: 873 }))).toBe(1000);
+  });
+
+  it("cerrar bolsa la guarda corregida y pone el contador en cero; la segunda no lleva los 100", () => {
+    const e = aplicar(contando(), { tipo: "sumar", cantidad: 873 }, cerrar(1));
+    expect(e.bolsas[0]).toMatchObject({ id: "b1", numero: 1, inicial: 100, crudo: 873, cantidad: 1000, estado: "valida" });
     expect(numeroBolsaAbierta(e)).toBe(2);
+    expect(enBolsa(e)).toBe(0);
   });
 
-  it("deshacer devuelve la bolsa cerrada al contador", () => {
-    let e = reducir(vacio, { tipo: "sumar", cantidad: 998 });
-    e = reducir(e, { tipo: "cerrarBolsa" });
-    e = reducir(e, { tipo: "deshacerCierre" });
-    expect(e.bolsas).toEqual([]);
-    expect(e.enBolsa).toBe(998);
+  it("deshacer descarta la bolsa (no la borra) y devuelve su conteo al contador", () => {
+    const e = aplicar(contando(), { tipo: "sumar", cantidad: 873 }, cerrar(1), { tipo: "deshacerCierre" });
+    expect(e.bolsas).toHaveLength(1);
+    expect(e.bolsas[0]!.estado).toBe("descartada");
+    expect(numeroBolsaAbierta(e)).toBe(1);
+    expect(enBolsa(e)).toBe(1000);
   });
 
   it("en pausa no suma", () => {
-    let e = reducir(vacio, { tipo: "pausar" });
-    e = reducir(e, { tipo: "sumar", cantidad: 5 });
-    expect(e.enBolsa).toBe(0);
+    expect(enBolsa(aplicar(contando(), { tipo: "pausar" }, { tipo: "sumar", cantidad: 5 }))).toBe(100);
   });
 
-  it("el total de hoy suma las bolsas cerradas y la abierta", () => {
-    expect(totalHoy(estadoDeEjemplo())).toBe(1003 + 1001 + 763);
+  it("sin conteo abierto no suma", () => {
+    expect(reducir(estadoInicial(), { tipo: "sumar", cantidad: 5 }).crudo).toBe(0);
   });
 
-  it("terminar pasa el conteo al historial, de primero", () => {
-    let e = reducir({ ...vacio, historial: estadoDeEjemplo().historial }, { tipo: "sumar", cantidad: 500 });
-    e = reducir(e, { tipo: "cerrarBolsa" });
-    e = reducir(e, { tipo: "terminar", id: "c1", fecha: "2026-10-14T10:00:00.000Z" });
-    expect(e.historial[0]).toEqual({ id: "c1", fecha: "2026-10-14T10:00:00.000Z", especie: "cachama", talla: "pequeno", bolsas: [500] });
+  it("el total de hoy suma las bolsas válidas y la abierta", () => {
+    const e = aplicar(contando(), { tipo: "sumar", cantidad: 873 }, cerrar(1), { tipo: "sumar", cantidad: 97 });
+    expect(totalHoy(e)).toBe(1000 + 100);
+  });
+
+  it("terminar pasa el conteo al historial, de primero, solo con las bolsas válidas", () => {
+    const e = aplicar(
+      { ...contando(), historial: estadoDeEjemplo().historial },
+      { tipo: "sumar", cantidad: 873 },
+      cerrar(1),
+      { tipo: "sumar", cantidad: 485 },
+      cerrar(2),
+      { tipo: "deshacerCierre" },
+      cerrar(3),
+      { tipo: "terminar", fin: "2026-10-14T10:00:00.000Z" },
+    );
+    expect(e.historial[0]).toEqual({
+      id: "c1",
+      fecha: "2026-10-14T10:00:00.000Z",
+      especie: "cachama",
+      talla: "pequeno",
+      bolsas: [1000, 500],
+    });
     expect(e.historial).toHaveLength(2);
-    expect(e.bolsas).toEqual([]);
+    expect(e.conteo).toBeNull();
   });
 
-  it("no termina un conteo sin bolsas", () => {
-    expect(reducir(vacio, { tipo: "terminar", id: "x", fecha: "" })).toBe(vacio);
+  it("no termina un conteo sin alevinos", () => {
+    const e = contando();
+    expect(reducir(e, { tipo: "terminar", fin: "" })).toBe(e);
   });
 
-  it("sin ?demo arranca vacío: sin conteos ni bolsas", () => {
-    expect(estadoInicial()).toMatchObject({ enBolsa: 0, bolsas: [], historial: [], especie: null });
+  it("empezar limpia el lote, el conteo y las bolsas, pero no el historial", () => {
+    const e = reducir(estadoDeEjemplo(), { tipo: "empezar" });
+    expect(e).toMatchObject({ especie: null, talla: null, lote: null, conteo: null, crudo: 0, bolsas: [] });
+    expect(e.historial).toHaveLength(1);
+  });
+
+  it("sin ?demo arranca vacío", () => {
+    expect(estadoInicial()).toMatchObject({ lote: null, conteo: null, bolsas: [], historial: [], guardado: true });
   });
 
   it("la meta sube y baja de 100 en 100 entre 100 y 10.000", () => {
@@ -62,9 +120,7 @@ describe("sesión de conteo", () => {
 
 describe("prueba de 100", () => {
   it("suma en vivo hasta que se termina, y repetir la pone en cero", () => {
-    let e = reducir(vacio, { tipo: "repetirPrueba" });
-    e = reducir(e, { tipo: "sumarPrueba", cantidad: 60 });
-    e = reducir(e, { tipo: "sumarPrueba", cantidad: 37 });
+    let e = aplicar(estadoInicial(), { tipo: "sumarPrueba", cantidad: 60 }, { tipo: "sumarPrueba", cantidad: 37 });
     expect(e.pruebaEnVivo).toBe(97);
     e = reducir(e, { tipo: "resultadoPrueba", contados: 97 });
     expect(reducir(e, { tipo: "sumarPrueba", cantidad: 5 }).pruebaEnVivo).toBe(97);

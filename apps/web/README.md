@@ -19,6 +19,10 @@ También comprueba el conteo en vivo: antes de empezar, ffmpeg genera un video s
 
 Necesita ffmpeg instalado. La primera vez hay que bajar el navegador: `pnpm --filter @contador/web exec playwright install chromium`.
 
+## Qué se guarda
+
+En el teléfono (IndexedDB, sin internet): el lote con su prueba de 100, cada conteo y cada bolsa en cuanto se cierra. Una bolsa cerrada no se cambia: «Deshacer» la deja descartada y vuelve su número al contador. Si el teléfono se apaga contando, al abrir la app el conteo se cierra con lo que ya estaba guardado. No se guarda video. Con `?demo` no se guarda nada.
+
 ## Ajustes del motor
 
 La app no muestra controles técnicos. Usa los ajustes que se dejaron en `/laboratorio` **en el mismo teléfono** (se guardan solos al moverlos); si nunca se abrió el laboratorio, usa los de fábrica.

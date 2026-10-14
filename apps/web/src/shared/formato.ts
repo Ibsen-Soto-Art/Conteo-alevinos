@@ -5,6 +5,11 @@ export function formatear(n: number): string {
   return numero.format(n);
 }
 
+/** «1 bolsa», «12 bolsas». */
+export function bolsas(n: number): string {
+  return `${formatear(n)} ${n === 1 ? "bolsa" : "bolsas"}`;
+}
+
 /** «hoy 3:40 p. m.», «ayer» o «12 de octubre». */
 export function cuando(fecha: Date, ahora = new Date()): string {
   const dia = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();

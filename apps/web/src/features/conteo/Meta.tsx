@@ -6,14 +6,17 @@ import { formatear } from "../../shared/formato";
 import { BarraPasos } from "../../shared/ui/BarraPasos";
 import { IconoChulo, IconoMas, IconoMenos, IconoSeguir } from "../../shared/ui/Iconos";
 import { Pantalla } from "../../shared/ui/Pantalla";
+import { Redirigir } from "../../shared/ui/Redirigir";
 
 const ATAJOS = [500, 1000, 1500, 2000];
 
 export function Meta() {
-  const { estado, despachar } = useSesion();
+  const { estado, despachar, acciones } = useSesion();
   const sinMeta = estado.meta === null;
   const meta = estado.meta ?? META_INICIAL;
   const fijar = (m: number | null) => despachar({ tipo: "fijarMeta", meta: m });
+
+  if (!estado.lote) return <Redirigir a="prueba" />;
 
   return (
     <Pantalla
@@ -21,7 +24,7 @@ export function Meta() {
       pie={
         <button type="button" className="boton boton-principal" onClick={() => {
             prepararSonido(); // el aviso de la meta solo puede sonar si antes hubo un toque
-            navegar("contando");
+            if (acciones.empezarConteo()) navegar("contando");
           }}
         >
           <IconoSeguir /> Empezar a contar
