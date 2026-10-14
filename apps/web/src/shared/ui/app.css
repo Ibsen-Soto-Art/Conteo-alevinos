@@ -88,7 +88,7 @@ html:not(.modo-laboratorio) body {
 .boton {
   min-height: var(--toque);
   min-width: var(--toque);
-  padding: 0 16px;
+  padding: 0 clamp(10px, 3vw, 16px);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -98,7 +98,7 @@ html:not(.modo-laboratorio) body {
   background: var(--blanco);
   color: var(--texto);
   font: inherit;
-  font-size: 1.1rem;
+  font-size: min(1.1rem, 4.6vw);
   font-weight: 700;
   text-align: center;
   white-space: nowrap;
@@ -304,9 +304,23 @@ html:not(.modo-laboratorio) body {
 }
 
 .opcion {
+  position: relative;
   padding: 0 6px;
   white-space: normal;
   font-size: clamp(1rem, 4.6vw, 1.25rem);
+}
+
+/* El chulo va en la esquina para no quitarle ancho al nombre. */
+.opcion .opcion-chulo {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  font-size: 1.1rem;
+}
+
+.opcion-ancha .opcion-chulo {
+  position: static;
+  font-size: 1.3em;
 }
 
 .opcion[aria-pressed="true"] {

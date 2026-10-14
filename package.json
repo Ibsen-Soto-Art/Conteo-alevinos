@@ -7,7 +7,8 @@
     "dev": "pnpm --filter @contador/web dev",
     "build": "pnpm -r build",
     "test": "pnpm -r test",
-    "typecheck": "pnpm -r typecheck"
+    "typecheck": "pnpm -r typecheck",
+    "e2e": "pnpm --filter @contador/web e2e"
   },
   "devDependencies": {
     "typescript": "^7.0.2",

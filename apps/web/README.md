@@ -7,6 +7,14 @@ App para contar alevinos con el celular. Sigue las reglas de `docs/diseno.md`: u
 
 El motor (`packages/counting-engine`) corre en un Web Worker; cada cuadro se reduce a 320 px de lado mayor antes de procesarlo.
 
+## Prueba de «sin scroll»
+
+```bash
+pnpm e2e
+```
+
+Recorre todas las pantallas en 360×640, 390×844 y 412×915 y falla si alguna tiene scroll, deja algo fuera de la pantalla, corta el texto de un botón o tiene botones de menos de 56 px (72 px el principal). La primera vez hay que bajar el navegador: `pnpm --filter @contador/web exec playwright install chromium`.
+
 ## Arrancar en el computador
 
 ```bash

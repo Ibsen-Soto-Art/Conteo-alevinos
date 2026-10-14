@@ -8,5 +8,6 @@ export default defineConfig(({ mode }) => ({
   server: { host: true, port: 5173 },
   preview: { host: true, port: 4173 },
   worker: { format: "es" },
-  test: { environment: "node" },
+  // Las pruebas de Playwright (e2e/) corren aparte con `pnpm e2e`.
+  test: { environment: "node", include: ["test/**/*.test.ts"] },
 }));

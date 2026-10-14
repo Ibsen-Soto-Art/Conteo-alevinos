@@ -36,6 +36,7 @@ Turborepo no está instalado todavía: con pocos paquetes basta `pnpm -r`. Se ag
 pnpm install
 pnpm test        # todas las pruebas
 pnpm typecheck
+pnpm e2e         # Playwright: ninguna pantalla con scroll en 360×640, 390×844 y 412×915
 pnpm dev         # app web, cuando exista apps/web
 ```
 

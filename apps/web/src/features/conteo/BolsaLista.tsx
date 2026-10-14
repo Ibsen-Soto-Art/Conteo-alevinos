@@ -11,7 +11,9 @@ export const SEGUNDOS_DESHACER = 8;
 
 export function BolsaLista() {
   const { estado, despachar } = useSesion();
-  const ultima = estado.bolsas.at(-1);
+  // Se recuerda la bolsa al abrir la pantalla: al terminar o deshacer, la lista cambia
+  // antes de salir de aquí y no debe disparar la redirección al inicio.
+  const [ultima] = useState(() => estado.bolsas.at(-1));
   const [quedan, setQuedan] = useState(SEGUNDOS_DESHACER);
 
   useEffect(() => {

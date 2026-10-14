@@ -44,3 +44,5 @@ __pycache__/
 # salidas del script de precisión
 tests/precision/resultados/
 tests/precision/videos/
+playwright-report/
+test-results/
