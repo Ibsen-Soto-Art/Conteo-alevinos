@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-export const RUTAS = ["inicio", "pez", "prueba", "meta", "contando", "bolsa-lista", "resumen", "conteos", "ayuda"] as const;
+export const RUTAS = ["inicio", "pez", "prueba", "meta", "devolver", "contando", "bolsa-lista", "resumen", "conteos", "ayuda"] as const;
 export type Ruta = (typeof RUTAS)[number];
 
 /** «#/meta» → «meta». Cualquier cosa desconocida lleva al inicio. */

@@ -9,7 +9,7 @@ const repoNuevo = () => crearRepositorio(`prueba-${++n}`);
 const lote: Lote = { id: "l1", especie: "tilapia", talla: "mediano", creadoEn: "2026-10-14T08:00:00.000Z", calibracion: null };
 const conteo = (id: string, fin: string | null, inicio = "2026-10-14T08:00:00.000Z"): Conteo => ({ id, loteId: "l1", metaPorBolsa: 1000, inicio, fin });
 const bolsa = (id: string, conteoId: string, numero: number, crudo: number, cerradaEn = "2026-10-14T09:00:00.000Z") =>
-  nuevaBolsa({ id, conteoId, numero, inicial: 0, crudo, factor: 1, cerradaEn });
+  nuevaBolsa({ id, conteoId, numero, crudo, factor: 1, cerradaEn });
 
 describe("repositorio en IndexedDB", () => {
   it("el historial trae los conteos terminados, el más reciente primero, con sus bolsas en orden", async () => {

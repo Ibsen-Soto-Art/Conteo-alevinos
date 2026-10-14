@@ -14,7 +14,7 @@ Especies: cachama, bocachico, bagres (pintadillo, yaque, pangasius) y tilapia, d
 - La app **solo facilita el conteo**: no hay comprobantes, PDF, QR, clientes, pedidos ni envíos por WhatsApp.
 - **Funciona sin internet**: acceso con licencia firmada (Ed25519) guardada en el teléfono que se renueva al haber señal; bloquea conteos nuevos tras 30 días sin conexión (ajustable).
 - **No se guarda video** de los conteos. Los videos de entrenamiento se graban aparte, en un "modo grabación" solo para el administrador o fincas autorizadas.
-- Calibración por lote: 100 alevinos contados a mano; factor = mano / app; se rechaza si queda fuera de 0,90 a 1,10.
+- Calibración por lote: 100 alevinos contados a mano; factor = mano / app; se rechaza si queda fuera de 0,90 a 1,10. Los 100 de la prueba se devuelven al tanque (no van en ninguna bolsa) y el conteo empieza en 0.
 - Conteo por bolsa con meta opcional; compuerta manual en v1.
 
 ## Stack
@@ -25,7 +25,7 @@ Turborepo no está instalado todavía: con pocos paquetes basta `pnpm -r`. Se ag
 
 ## Estado actual del código
 
-- `packages/domain`: calibración, lote, conteo y bolsa (crudo, factor, cantidad corregida, válida o descartada), los 100 de la prueba van a la primera bolsa, UUID v7. Con pruebas.
+- `packages/domain`: calibración, lote, conteo y bolsa (crudo, factor, cantidad corregida, válida o descartada), UUID v7. Cada bolsa empieza en 0. Con pruebas.
 - `packages/counting-engine`: motor de conteo **clásico, sin entrenamiento**: umbral sobre fondo iluminado, manchas conectadas, rastreador por cercanía y cruce de línea. Las manchas grandes cuentan según área / área típica. El rastreador predice la posición con la velocidad de cada pista y recalcula el peso cuando una mancha se separa. Con pruebas sobre cuadros sintéticos.
 - `apps/web`: app del campesino (7 pantallas, navegación por hash, estado en `app/sesion.ts`, acciones que guardan en `app/acciones.ts`, IndexedDB con Dexie en `shared/datos/`) y `/laboratorio` con los controles técnicos. El motor corre en un Web Worker (`features/conteo/`). HTTPS de desarrollo para usar la cámara desde el celular.
 - Falta: PWA, guía para grabar videos en finca, carpeta `ml/`, ADR en `docs/decisiones/`, CI.

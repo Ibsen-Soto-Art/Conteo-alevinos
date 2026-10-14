@@ -1,7 +1,6 @@
 import { navegar } from "../../app/rutas";
 import { META_INICIAL, META_PASO, cambiarMeta } from "../../app/sesion";
 import { useSesion } from "../../app/SesionContexto";
-import { prepararSonido } from "../../shared/avisos";
 import { formatear } from "../../shared/formato";
 import { BarraPasos } from "../../shared/ui/BarraPasos";
 import { IconoChulo, IconoMas, IconoMenos, IconoSeguir } from "../../shared/ui/Iconos";
@@ -11,7 +10,7 @@ import { Redirigir } from "../../shared/ui/Redirigir";
 const ATAJOS = [500, 1000, 1500, 2000];
 
 export function Meta() {
-  const { estado, despachar, acciones } = useSesion();
+  const { estado, despachar } = useSesion();
   const sinMeta = estado.meta === null;
   const meta = estado.meta ?? META_INICIAL;
   const fijar = (m: number | null) => despachar({ tipo: "fijarMeta", meta: m });
@@ -22,11 +21,8 @@ export function Meta() {
     <Pantalla
       cabecera={<BarraPasos paso={3} onVolver={() => navegar("prueba")} />}
       pie={
-        <button type="button" className="boton boton-principal" onClick={() => {
-            prepararSonido(); // el aviso de la meta solo puede sonar si antes hubo un toque
-            if (acciones.empezarConteo()) navegar("contando");
-          }}
-        >
+        // Antes de contar, la pantalla «Devolver» pide devolver los 100 de la prueba al tanque.
+        <button type="button" className="boton boton-principal" onClick={() => navegar("devolver")}>
           <IconoSeguir /> Empezar a contar
         </button>
       }

@@ -1,4 +1,5 @@
 import { Ayuda } from "../features/ayuda/Ayuda";
+import { Devolver } from "../features/calibracion/Devolver";
 import { Prueba100 } from "../features/calibracion/Prueba100";
 import { BolsaLista } from "../features/conteo/BolsaLista";
 import { Contando } from "../features/conteo/Contando";
@@ -21,6 +22,7 @@ const PANTALLAS: Record<Ruta, () => React.JSX.Element> = {
   pez: QuePez,
   prueba: Prueba100,
   meta: Meta,
+  devolver: Devolver,
   contando: Contando,
   "bolsa-lista": BolsaLista,
   resumen: Resumen,

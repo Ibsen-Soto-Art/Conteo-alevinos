@@ -1,7 +1,6 @@
 import {
   cantidadBolsa,
   descartarBolsa,
-  inicialDeBolsa,
   nuevaBolsa,
   siguienteNumero,
   totalConteo,
@@ -81,10 +80,12 @@ export function numeroBolsaAbierta(e: EstadoSesion): number {
   return siguienteNumero(e.bolsas);
 }
 
-/** Alevinos en la bolsa abierta: los de la prueba (si es la primera) más lo de la app corregido. */
+/**
+ * Alevinos en la bolsa abierta: lo que contó la app corregido con el factor. Empieza en 0;
+ * los 100 de la prueba no van en la bolsa, se devuelven al tanque.
+ */
 export function enBolsa(e: EstadoSesion): number {
-  const inicial = e.lote ? inicialDeBolsa(numeroBolsaAbierta(e), e.lote) : 0;
-  return cantidadBolsa(inicial, e.crudo, factor(e));
+  return cantidadBolsa(e.crudo, factor(e));
 }
 
 export function totalHoy(e: EstadoSesion): number {
@@ -94,12 +95,10 @@ export function totalHoy(e: EstadoSesion): number {
 /** La bolsa que se guardaría al cerrar ahora. */
 export function bolsaAlCerrar(e: EstadoSesion, id: string, cerradaEn: string): Bolsa | null {
   if (!e.conteo) return null;
-  const numero = numeroBolsaAbierta(e);
   return nuevaBolsa({
     id,
     conteoId: e.conteo.id,
-    numero,
-    inicial: e.lote ? inicialDeBolsa(numero, e.lote) : 0,
+    numero: numeroBolsaAbierta(e),
     crudo: e.crudo,
     factor: factor(e),
     cerradaEn,
@@ -215,8 +214,8 @@ export function estadoDeEjemplo(ahora = new Date()): EstadoSesion {
     calibracion: { pasadas: [{ contadosAMano: 100, contadosPorApp: 97 }], factor: 100 / 97 },
   };
   const conteo: Conteo = { id: "ejemplo-conteo", loteId: lote.id, metaPorBolsa: META_INICIAL, inicio: ahora.toISOString(), fin: null };
-  const bolsa = (numero: number, inicial: number, crudo: number): Bolsa =>
-    nuevaBolsa({ id: `ejemplo-bolsa-${numero}`, conteoId: conteo.id, numero, inicial, crudo, factor: 100 / 97, cerradaEn: ahora.toISOString() });
+  const bolsa = (numero: number, crudo: number): Bolsa =>
+    nuevaBolsa({ id: `ejemplo-bolsa-${numero}`, conteoId: conteo.id, numero, crudo, factor: 100 / 97, cerradaEn: ahora.toISOString() });
   return {
     ...estadoInicial(),
     finca: "Finca La Esperanza",
@@ -227,7 +226,7 @@ export function estadoDeEjemplo(ahora = new Date()): EstadoSesion {
     lote,
     conteo,
     crudo: 740,
-    bolsas: [bolsa(1, 100, 876), bolsa(2, 0, 971)],
+    bolsas: [bolsa(1, 973), bolsa(2, 971)],
     historial: [
       {
         id: "ejemplo-1",

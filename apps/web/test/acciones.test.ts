@@ -47,7 +47,7 @@ describe("acciones", () => {
     const { almacen, acciones, guardado } = preparar({ pruebaApp: 97 });
     acciones.aceptarPrueba();
     acciones.empezarConteo();
-    almacen.despachar({ tipo: "sumar", cantidad: 873 });
+    almacen.despachar({ tipo: "sumar", cantidad: 970 });
     expect(acciones.cerrarBolsa()).toBe(true);
     acciones.deshacerCierre();
     await esperarGuardado();
@@ -62,7 +62,7 @@ describe("acciones", () => {
     const { almacen, acciones, guardado } = preparar({ pruebaApp: 97 });
     acciones.aceptarPrueba();
     acciones.empezarConteo();
-    almacen.despachar({ tipo: "sumar", cantidad: 873 });
+    almacen.despachar({ tipo: "sumar", cantidad: 970 });
     expect(acciones.cerrarBolsa()).toBe(true);
     expect(acciones.cerrarBolsa()).toBe(false);
     await esperarGuardado();

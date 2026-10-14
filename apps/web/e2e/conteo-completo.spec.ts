@@ -28,10 +28,16 @@ test("cuenta, guarda la bolsa y el conteo sigue ahí al recargar", async ({ page
   await page.getByRole("button", { name: "500", exact: true }).click();
   await page.getByRole("button", { name: "Empezar a contar" }).click();
 
-  // Los 100 de la prueba ya están en la primera bolsa.
+  // Los 100 de la prueba no van en la bolsa: primero se devuelven al tanque.
+  await expect(page.getByText("Devuelva los 100 de la prueba al tanque")).toBeVisible();
+  await page.getByRole("button", { name: "Listo, empezar a contar" }).click();
+
+  // Contando empieza la bolsa 1 en 0, y no se puede cerrar una bolsa vacía.
   await expect(page.getByText("Bolsa 1")).toBeVisible();
-  expect(await leer(page, ".contador-numero")).toBeGreaterThanOrEqual(100);
-  await expect.poll(() => leer(page, ".contador-numero"), { timeout: 30_000 }).toBeGreaterThan(130);
+  await expect(page.locator(".contador-numero")).toHaveText("0");
+  await expect(page.locator(".total-hoy strong")).toHaveText("0");
+  await expect(page.getByRole("button", { name: "Cerrar bolsa" })).toBeDisabled();
+  await expect.poll(() => leer(page, ".contador-numero"), { timeout: 30_000 }).toBeGreaterThan(30);
 
   await page.getByRole("button", { name: "Cerrar bolsa" }).click();
   await expect(page.getByText("¡Bolsa 1 lista!")).toBeVisible();

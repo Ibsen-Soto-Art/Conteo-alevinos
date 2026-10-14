@@ -168,7 +168,7 @@ Estos errores suelen ir **siempre en el mismo sentido** dentro de un lote (por e
 3. Los vierte en el canal y la app los cuenta como en un conteo normal.
 4. La app compara: si contó 97, el factor de corrección es 100 ÷ 97 = 1,031.
 5. Desde ese momento, cada bolsa del lote se multiplica por ese factor.
-6. Esos 100 alevinos pasan a la primera bolsa, así no se pierden ni se cuentan dos veces.
+6. Esos 100 alevinos se devuelven al tanque: no van en ninguna bolsa. Antes de contar, la app lo recuerda con una pantalla («Devuelva los 100 de la prueba al tanque»), y el conteo de la primera bolsa empieza en 0.
 
 | Ejemplo | Valor |
 | --- | --- |
@@ -209,7 +209,7 @@ El teléfono va en el soporte, mirando hacia abajo al canal de acrílico con luz
 
 ### Paso a paso
 
-1. **Iniciar el conteo:** el dueño elige el lote (ya calibrado) y, si quiere, una meta por bolsa, por ejemplo 1.000 alevinos.
+1. **Iniciar el conteo:** el dueño elige el lote (ya calibrado) y, si quiere, una meta por bolsa, por ejemplo 1.000 alevinos. Devuelve al tanque los 100 de la prueba; la bolsa 1 empieza en 0.
 2. **Poner la bolsa:** coloca la bolsa en la salida del canal y abre la compuerta.
 3. **Verter los alevinos:** los echa poco a poco a la entrada del canal. Cada alevino que cruza la línea de conteo suma uno, ya corregido con el factor de calibración.
 4. **Seguir el número:** la pantalla muestra en grande cuántos van en la bolsa y, en pequeño, el total del conteo.

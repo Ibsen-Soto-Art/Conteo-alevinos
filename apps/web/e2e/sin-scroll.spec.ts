@@ -92,6 +92,7 @@ const PANTALLAS: { nombre: string; ruta: string; antes?: (p: Page) => Promise<vo
     ruta: "meta",
     antes: (p) => p.getByRole("button", { name: /Sin meta/ }).click(),
   },
+  { nombre: "devolver los 100 al tanque", ruta: "devolver" },
   { nombre: "contando", ruta: "contando" },
   {
     nombre: "contando: cerca de la meta (ámbar)",
@@ -171,6 +172,10 @@ test("el recorrido completo no tiene scroll en ninguna pantalla", async ({ page 
   await page.getByRole("button", { name: "1.500" }).click();
   await revisar(page);
   await page.getByRole("button", { name: "Empezar a contar" }).click();
+  await expect(page.getByText("Devuelva los 100 de la prueba al tanque")).toBeVisible();
+  await revisar(page);
+  await page.getByRole("button", { name: "Listo, empezar a contar" }).click();
+  await despachar(page, { tipo: "sumar", cantidad: 500 });
   await revisar(page);
   await page.getByRole("button", { name: "Cerrar bolsa" }).click();
   await expect(page.getByText(/Bolsa 1 lista/)).toBeVisible();

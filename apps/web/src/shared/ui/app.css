@@ -988,3 +988,34 @@ html:not(.modo-laboratorio) body {
   border-color: var(--problema);
   color: var(--blanco);
 }
+
+/* ---------- devolver los 100 al tanque ---------- */
+
+.devolver-centro {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--hueco);
+  text-align: center;
+}
+
+.devolver-dibujo {
+  width: min(80%, 34dvh, 320px);
+  height: auto;
+  color: var(--texto);
+}
+
+.devolver-titulo {
+  margin: 0;
+  max-width: 14em;
+  font-size: clamp(1.6rem, min(4.6dvh, 7.5vw), 2.4rem);
+}
+
+.devolver-detalle {
+  margin: 0;
+  max-width: 20em;
+  font-size: clamp(1.05rem, 2.8dvh, 1.3rem);
+}

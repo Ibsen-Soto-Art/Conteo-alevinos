@@ -156,3 +156,23 @@ export const IconoReiniciar = (p: Props) => (
     <path d="M4 4v5h5" />
   </Icono>
 );
+
+/** Dibujo: un balde con los alevinos de la prueba y una flecha hacia el tanque con agua. */
+export const DibujoDevolver = (p: Props) => (
+  <svg viewBox="0 0 240 140" aria-hidden="true" focusable="false" {...p}>
+    {/* balde */}
+    <path d="M14 52h62l-8 70H22z" fill="#ffffff" stroke="currentColor" strokeWidth="5" strokeLinejoin="round" />
+    <path d="M22 52c0-16 14-26 32-26s32 10 32 26" fill="none" stroke="currentColor" strokeWidth="4" />
+    <text x="45" y="96" textAnchor="middle" fontSize="24" fontWeight="700" fill="currentColor">
+      100
+    </text>
+    {/* flecha */}
+    <path d="M86 46c26-30 62-30 84-4" fill="none" stroke="currentColor" strokeWidth="6" strokeLinecap="round" />
+    <path d="M160 30l12 14-18 4" fill="none" stroke="currentColor" strokeWidth="6" strokeLinecap="round" strokeLinejoin="round" />
+    {/* tanque con agua y peces */}
+    <rect x="132" y="64" width="98" height="64" rx="6" fill="#ffffff" stroke="currentColor" strokeWidth="5" />
+    <path d="M136 82c10-6 20 6 30 0s20 6 30 0 20 6 30 0v42h-90z" fill="#0b6e69" opacity="0.35" />
+    <path d="M156 100c5-6 13-7 19-2l6-4-1 6 1 6-6-4c-6 5-14 4-19-2z" fill="currentColor" />
+    <path d="M192 112c5-6 13-7 19-2l6-4-1 6 1 6-6-4c-6 5-14 4-19-2z" fill="currentColor" />
+  </svg>
+);
