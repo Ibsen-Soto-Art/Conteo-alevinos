@@ -9,7 +9,8 @@
     "test": "pnpm -r test",
     "typecheck": "pnpm -r typecheck",
     "e2e": "pnpm --filter @contador/web e2e",
-    "build:web": "pnpm --filter @contador/web build"
+    "build:web": "pnpm --filter @contador/web build",
+    "precision": "pnpm --filter @contador/precision precision"
   },
   "devDependencies": {
     "typescript": "^7.0.2",

@@ -1,0 +1,19 @@
+{
+  "name": "@contador/precision",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Pasa el motor por videos con conteo a mano conocido y mide el error.",
+  "scripts": {
+    "precision": "tsx src/cli.ts",
+    "test": "vitest run",
+    "typecheck": "tsc -p ."
+  },
+  "dependencies": {
+    "@contador/counting-engine": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.5",
+    "tsx": "^4.23.15"
+  }
+}

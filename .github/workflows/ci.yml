@@ -33,10 +33,16 @@ jobs:
       - name: Instalar dependencias
         run: pnpm install --frozen-lockfile
 
+      # ffmpeg: lo usan las pruebas de precisión (videos sintéticos) y Playwright (cámara falsa).
+      - name: Instalar ffmpeg
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends ffmpeg
+
       - name: Revisar tipos
         run: pnpm typecheck
 
-      - name: Pruebas unitarias
+      - name: Pruebas unitarias y de precisión
         run: pnpm test
 
       - name: Compilar la app
@@ -50,12 +56,8 @@ jobs:
           include-hidden-files: true
           retention-days: 7
 
-      # Las pruebas de punta a punta generan con ffmpeg el video que hace de cámara.
-      - name: Instalar ffmpeg y Chromium para Playwright
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends ffmpeg
-          pnpm --filter @contador/web exec playwright install --with-deps chromium
+      - name: Instalar Chromium para Playwright
+        run: pnpm --filter @contador/web exec playwright install --with-deps chromium
 
       - name: Pruebas de punta a punta (sin scroll, conteo en vivo, sin internet)
         run: pnpm e2e

@@ -31,13 +31,15 @@ Turborepo no está instalado todavía: con pocos paquetes basta `pnpm -r`. Se ag
 - PWA (vite-plugin-pwa): instalable, vertical, abre sin internet después de la primera visita; las versiones nuevas se aplican solo en el Inicio sin conteo abierto (`app/useActualizacion.ts`).
 - CI en `.github/workflows/ci.yml`: install, typecheck, test, build y e2e en cada push y PR; publica en Cloudflare solo si pasa, en `main`.
 - Guía para grabar videos de entrenamiento y plantilla CSV: `docs/guias/admin/`.
-- Falta: script de precisión, ADR en `docs/decisiones/`, carpeta `ml/`.
+- `tests/precision`: `pnpm precision [carpeta]` pasa el motor por videos con conteo a mano (plantilla CSV) y da el error por video y por especie. Los ajustes (`Controles`, `configuracionMotor`, `tamanoProceso`) viven en `counting-engine` para que la app y el script midan igual.
+- Falta: ADR en `docs/decisiones/`, carpeta `ml/`.
 
 ## Comandos
 
 ```bash
 pnpm install
-pnpm test        # todas las pruebas
+pnpm test        # todas las pruebas (las de precisión necesitan ffmpeg)
+pnpm precision   # error del motor contra videos con conteo a mano (tests/precision)
 pnpm typecheck
 pnpm e2e         # Playwright (necesita ffmpeg): sin scroll en 360×640, 390×844 y 412×915, conteo en vivo con cámara falsa, y app compilada sin internet
 pnpm dev         # app web, cuando exista apps/web

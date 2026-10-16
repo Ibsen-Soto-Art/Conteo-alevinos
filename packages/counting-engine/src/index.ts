@@ -4,3 +4,4 @@ export * from "./rastreador";
 export * from "./linea";
 export * from "./motor";
 export * from "./brillo";
+export * from "./ajustes";
