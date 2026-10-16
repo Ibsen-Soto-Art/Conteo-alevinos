@@ -1,106 +1,72 @@
-# Publicar una versión (Cloudflare)
+# Publicar una versión
 
-**Dirección publicada:** <https://conteo-alevinos.ibsensotart23.workers.dev> (proyecto `conteo-alevinos`, creado como Worker; ver «Si Cloudflare abre la pantalla de Workers»).
+**Dirección:** <https://contador.ibsen-soto.pro> (también <https://contador-alevinos.pages.dev>).
 
-La app se publica sola en Cloudflare cada vez que se hace `git push` a la rama `main` del repositorio `Ibsen-Soto-Art/Conteo-alevinos`. Cloudflare descarga el código, lo compila y lo publica con HTTPS. Esta guía explica cómo dejarlo configurado la primera vez.
+La app se publica sola en **Cloudflare Pages** con cada `git push` a `main`, **solo si pasa la CI** (`.github/workflows/ci.yml`): instalar, tipos, pruebas, compilación, Playwright y pruebas de `ml/`. El trabajo **Publicar en Cloudflare** sube exactamente la app que se probó, con `wrangler pages deploy`, al proyecto `contador-alevinos`. Si el proyecto no existe, lo crea.
 
-> Los nombres de los botones son los de la página de Cloudflare en octubre de 2026. Si alguno cambió un poco, busque el más parecido.
+> Los nombres de los botones son los de Cloudflare, GitHub y Hostinger en octubre de 2026. Si alguno cambió un poco, busque el más parecido.
 
-## Configuración de compilación (resumen)
+## Desde ahora
 
-| Campo en Cloudflare | Valor |
-| --- | --- |
-| Production branch | `main` |
-| Framework preset | `None` |
-| Build command | `npx pnpm@10.0.0 install --frozen-lockfile && npx pnpm@10.0.0 build:web` |
-| Build output directory | `apps/web/dist` |
-| Root directory (advanced) | *(vacío)* |
-| Variable `NODE_VERSION` | `22` |
-| Variable `SKIP_DEPENDENCY_INSTALL` | `1` |
+- `git push` a `main` → en unos 3 minutos la versión nueva está publicada. En GitHub, **Actions** muestra cada ejecución.
+- Si la CI falla, no se publica y sigue en línea la versión anterior. La ejecución en rojo dice qué paso falló; si fue Playwright, descargue **informe-playwright** al final de la página.
+- Para volver a una versión anterior: en Cloudflare, **Workers & Pages** → `contador-alevinos` → **Deployments** → en una publicación buena, **⋯** → **Rollback to this deployment**.
+- Los teléfonos con la app instalada reciben la versión nueva la próxima vez que la abren con internet; se aplica cuando están en el Inicio sin un conteo abierto.
 
-Por qué así: el repositorio es un monorepo con pnpm 10. `SKIP_DEPENDENCY_INSTALL` evita que Cloudflare instale con su propia versión de pnpm; el comando de compilación instala con la misma versión que se usa al programar (la de `packageManager` en `package.json`) y compila solo `apps/web`.
+## Cómo quedó configurado (por si hay que repetirlo)
 
-## 1. Crear la cuenta
+### 1. Token de Cloudflare para GitHub
 
-1. Abra <https://dash.cloudflare.com/sign-up>.
-2. Escriba su correo y una contraseña, y toque **Sign up**.
-3. Abra el correo de Cloudflare y toque el enlace para verificar la cuenta.
-4. Si le pregunta qué quiere hacer o le ofrece agregar un dominio, puede saltarlo: no hace falta un dominio propio, Cloudflare da una dirección `.pages.dev` gratis.
+En Cloudflare: ícono de persona arriba a la derecha → **Profile** → **API Tokens** → **Create Token** → plantilla **Edit Cloudflare Workers** → **Use template**.
 
-## 2. Crear el proyecto y conectar GitHub
+- **Token name:** `github-actions-conteo-alevinos`
+- **Permissions:** las de la plantilla y, con **+ Add more**, una fila más: **Account** · **Cloudflare Pages** · **Edit**.
+- **Account Resources:** **Include** → la cuenta. **Zone Resources:** **Include** → **All zones**.
+- **Continue to summary** → **Create Token** → copiar el token.
 
-1. En el menú de la izquierda toque **Workers & Pages** (puede estar dentro de **Compute**).
-2. Toque **Create application** (o **Create**).
-3. Elija la pestaña **Pages** y, en **Import an existing Git repository**, toque **Get started**. (Si solo ve opciones de Workers, busque el enlace **Looking to deploy Pages? Get started**.)
-4. Toque **Connect GitHub**. Se abre GitHub:
-   1. Si le pide, inicie sesión en GitHub con la cuenta `Ibsen-Soto-Art`.
-   2. En **Repository access** elija **Only select repositories** y escoja `Conteo-alevinos`.
-   3. Toque **Install & Authorize**.
-5. De vuelta en Cloudflare, elija la cuenta `Ibsen-Soto-Art`, el repositorio `Conteo-alevinos` y toque **Begin setup**.
+Para agregarle un permiso a un token que ya existe: en la lista de **API Tokens**, **⋯** del token → **Edit** → **+ Add more** → **Continue to summary** → **Update token**. El valor del token no cambia.
 
-## 3. Configurar la compilación
+### 2. Secretos en GitHub
 
-En **Set up builds and deployments**:
+En el repositorio: **Settings** → **Secrets and variables** → **Actions** → **New repository secret**:
 
-1. **Project name:** `contador-alevinos`. De aquí sale la dirección: `https://contador-alevinos.pages.dev`. Si el nombre ya está tomado, Cloudflare le agrega letras; anote la dirección que le muestre.
-2. **Production branch:** `main`.
-3. **Framework preset:** `None`.
-4. **Build command:** `npx pnpm@10.0.0 install --frozen-lockfile && npx pnpm@10.0.0 build:web`
-5. **Build output directory:** `apps/web/dist`
-6. Abra **Root directory (advanced)** y déjelo vacío.
-7. Abra **Environment variables (advanced)** y con **+ Add variable** agregue dos:
-   - Variable name `NODE_VERSION`, value `22`
-   - Variable name `SKIP_DEPENDENCY_INSTALL`, value `1`
-8. Toque **Save and Deploy**.
+- `CLOUDFLARE_API_TOKEN`: el token.
+- `CLOUDFLARE_ACCOUNT_ID`: el número largo de la dirección del panel de Cloudflare (`dash.cloudflare.com/<Account ID>/...`).
 
-La primera compilación tarda unos 2 minutos. Cuando diga **Success**, toque **Continue to project** y abra la dirección `https://contador-alevinos.pages.dev`.
+### 3. Dominio propio en Pages
 
-## Si Cloudflare abre la pantalla de Workers
+En Cloudflare: **Workers & Pages** → `contador-alevinos` → pestaña **Custom domains** → **Set up a custom domain** → escribir `contador.ibsen-soto.pro` → **Continue**. Cloudflare dice qué registro CNAME crear; tocar **Activate domain** (o **Begin CNAME setup**). Queda **Verifying** hasta que exista el registro del paso 4.
 
-Cloudflare ahora muestra primero **Workers**. Se reconoce porque pide **Deploy command** (`npx wrangler deploy`) y **Preview command**. También sirve: el repositorio trae `wrangler.jsonc`, que publica `apps/web/dist` con las mismas reglas (`_headers`, `_redirects` y cualquier dirección abre la app).
+### 4. Registro CNAME en Hostinger
 
-| Campo | Valor |
-| --- | --- |
-| Project name | `conteo-alevinos` (debe ser igual a `name` en `wrangler.jsonc`) |
-| Build command | `npx pnpm@10.0.0 install --frozen-lockfile && npx pnpm@10.0.0 build:web` |
-| Deploy command | `npx wrangler deploy` |
-| Preview command | el que trae Cloudflare |
-| Variables (en **Advanced settings** → **Build variables**) | `NODE_VERSION` = `22`, `SKIP_DEPENDENCY_INSTALL` = `1` |
+El DNS de `ibsen-soto.pro` está en Hostinger y **solo** se agrega este registro (no se toca nada más del dominio):
 
-La dirección queda `https://conteo-alevinos.<su-subdominio>.workers.dev`; Cloudflare la muestra al terminar.
+En hPanel: **Dominios** → `ibsen-soto.pro` → **DNS / Nameservers** → **Registros DNS**, en el formulario de arriba:
 
-## 4. Publicar solo si el CI pasa
+| Tipo | Nombre | Valor | TTL |
+| --- | --- | --- | --- |
+| CNAME | `contador` | `contador-alevinos.pages.dev` | 300 |
 
-La compilación automática de Cloudflare publica cada push sin esperar a GitHub. Por eso la publicación la hace el CI (`.github/workflows/ci.yml`): el trabajo **Publicar en Cloudflare** corre solo en pushes a `main` y solo si **Instalar, revisar y probar** pasó, y publica exactamente la app que se probó. Para dejarlo así:
+→ **Añadir registro**.
 
-1. **Crear un token en Cloudflare.** Arriba a la derecha, el ícono de persona → **Profile** → **API Tokens** → **Create Token**. En la plantilla **Edit Cloudflare Workers** toque **Use template**. En **Account Resources** elija **Include** y su cuenta; en **Zone Resources**, **All zones**. Toque **Continue to summary** → **Create Token** y copie el token (solo se muestra una vez).
-2. **Copiar el Account ID.** Es el número largo en la dirección del panel (`dash.cloudflare.com/<Account ID>/...`); también aparece en **Workers & Pages**, a la derecha, como **Account ID**.
-3. **Guardar los dos en GitHub.** En el repositorio: **Settings** → **Secrets and variables** → **Actions** → **New repository secret**. Cree `CLOUDFLARE_API_TOKEN` (el token) y `CLOUDFLARE_ACCOUNT_ID` (el Account ID), cada uno con **Add secret**.
-4. **Probar.** En GitHub: **Actions** → **CI** → la última ejecución de `main` → **Re-run jobs** → **Re-run all jobs**. Los dos trabajos deben quedar en verde.
-5. **Apagar la compilación de Cloudflare.** En Cloudflare: **Workers & Pages** → `conteo-alevinos` → **Settings** → **Build** → en **Git repository**, **Disconnect**. Desde ese momento solo publica el CI.
-6. *(Opcional)* Para que un pull request no se pueda unir con pruebas fallando: en GitHub, **Settings** → **Branches** → **Add branch ruleset** (o **Add rule**) para `main`, con **Require status checks to pass** y el chequeo **Instalar, revisar y probar**.
-
-Mientras no estén los secretos, el trabajo **Publicar en Cloudflare** falla con un aviso que lo explica (y la compilación de Cloudflare sigue publicando como antes).
-
-## 5. Desde ahora
-
-- Cada `git push` a `main` que pasa el CI publica una versión nueva sola. En GitHub, **Actions** muestra cada ejecución; en Cloudflare, **Deployments** muestra cada publicación.
-- Si el CI falla, no se publica y la versión anterior sigue en línea. En **Actions**, la ejecución en rojo dice qué paso falló; si fue Playwright, descargue **informe-playwright** al final de la página.
-- Para volver a una versión anterior: en **Deployments**, en los tres puntos de una publicación buena, **Rollback to this deployment**.
-- Los teléfonos que ya tienen la app reciben la versión nueva la próxima vez que la abran con internet; se aplica cuando están en el Inicio sin un conteo abierto.
-
-## Archivos de Cloudflare en el repositorio
-
-- `apps/web/public/_redirects`: `/laboratorio` abre la app (que decide mostrar el laboratorio).
-- `apps/web/public/_headers`: `sw.js`, el manifiesto e `index.html` sin caché (para que lleguen las versiones nuevas); `assets/` con caché larga; permiso de cámara solo para la propia app.
-- `.node-version`: Node 22.
+En minutos (a veces hasta una hora) Cloudflare marca el dominio como **Active** y emite el certificado (el candado).
 
 ## Comprobar antes de publicar
 
-El CI lo hace solo, pero se puede correr lo mismo en el computador:
+La CI lo hace sola, pero se puede correr lo mismo en el computador:
 
 ```bash
 pnpm test && pnpm typecheck && pnpm e2e
 ```
 
 `pnpm e2e` incluye las pruebas de la app compilada sin internet (`apps/web/e2e-pwa/`).
+
+## Archivos de Cloudflare en el repositorio
+
+- `apps/web/public/_redirects`: `/laboratorio` abre la app (que decide mostrar el laboratorio). Se reescribe a `/` y no a `/index.html`, porque Cloudflare redirige `/index.html` a `/` y se perdería la ruta.
+- `apps/web/public/_headers`: `sw.js`, el manifiesto e `index.html` sin caché (para que lleguen las versiones nuevas); `assets/` con caché larga; permiso de cámara solo para la propia app.
+- `.node-version`: Node 22.
+
+## Antes (ya no se usa)
+
+Hasta octubre de 2026 la app estuvo en un Worker de Cloudflare, `conteo-alevinos`, en <https://conteo-alevinos.ibsensotart23.workers.dev>. Ese Worker ya no recibe versiones nuevas; se puede borrar en **Workers & Pages** → `conteo-alevinos` → **Settings** → **Delete**.
