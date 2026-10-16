@@ -19,6 +19,14 @@ También comprueba el conteo en vivo: antes de empezar, ffmpeg genera un video s
 
 Necesita ffmpeg instalado. La primera vez hay que bajar el navegador: `pnpm --filter @contador/web exec playwright install chromium`.
 
+## Instalable y sin internet
+
+La app es una PWA (vite-plugin-pwa). En la primera visita con internet el service worker guarda todo lo necesario: código, Worker del motor, letra e íconos. Desde ahí abre y cuenta sin internet, también en `/laboratorio` y en las rutas con `#`.
+
+Las versiones nuevas se descargan solas, pero solo se aplican cuando la app está en el Inicio sin un conteo abierto: nunca se recarga a mitad de una bolsa.
+
+El service worker solo existe en la app compilada (`pnpm --filter @contador/web build` y `preview`), no con `pnpm dev`. Las pruebas de `e2e-pwa/` la compilan y la revisan sin internet.
+
 ## Qué se guarda
 
 En el teléfono (IndexedDB, sin internet): el lote con su prueba de 100, cada conteo y cada bolsa en cuanto se cierra. Una bolsa cerrada no se cambia: «Deshacer» la deja descartada y vuelve su número al contador. Si el teléfono se apaga contando, al abrir la app el conteo se cierra con lo que ya estaba guardado. No se guarda video. Con `?demo` no se guarda nada.

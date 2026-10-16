@@ -10,6 +10,7 @@ import { Inicio } from "../features/inicio/Inicio";
 import { QuePez } from "../features/lotes/QuePez";
 import { AvisoGirar } from "../shared/ui/AvisoGirar";
 import { useRuta, type Ruta } from "./rutas";
+import { useActualizacion } from "./useActualizacion";
 import { MotorProveedor } from "./MotorContexto";
 import { crearRepositorio, repositorioDeEjemplo } from "../shared/datos/repositorio";
 import { estadoDeEjemplo, estadoInicial } from "./sesion";
@@ -52,6 +53,7 @@ export function App() {
         </div>
         <AvisoGirar />
         {DEMO && <EngancheDemo />}
+        <Actualizacion ruta={ruta} />
       </MotorProveedor>
     </SesionProveedor>
   );
@@ -66,5 +68,11 @@ function EngancheDemo() {
   useEffect(() => {
     (window as unknown as { __demo?: unknown }).__demo = { despachar };
   }, [despachar]);
+  return null;
+}
+
+function Actualizacion({ ruta }: { ruta: Ruta }) {
+  const { estado } = useSesion();
+  useActualizacion(ruta === "inicio" && estado.conteo === null);
   return null;
 }

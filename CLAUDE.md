@@ -28,7 +28,8 @@ Turborepo no está instalado todavía: con pocos paquetes basta `pnpm -r`. Se ag
 - `packages/domain`: calibración, lote, conteo y bolsa (crudo, factor, cantidad corregida, válida o descartada), UUID v7. Cada bolsa empieza en 0. Con pruebas.
 - `packages/counting-engine`: motor de conteo **clásico, sin entrenamiento**: umbral sobre fondo iluminado, manchas conectadas, rastreador por cercanía y cruce de línea. Las manchas grandes cuentan según área / área típica. El rastreador predice la posición con la velocidad de cada pista y recalcula el peso cuando una mancha se separa. Con pruebas sobre cuadros sintéticos.
 - `apps/web`: app del campesino (7 pantallas, navegación por hash, estado en `app/sesion.ts`, acciones que guardan en `app/acciones.ts`, IndexedDB con Dexie en `shared/datos/`) y `/laboratorio` con los controles técnicos. El motor corre en un Web Worker (`features/conteo/`). HTTPS de desarrollo para usar la cámara desde el celular.
-- Falta: PWA, guía para grabar videos en finca, carpeta `ml/`, ADR en `docs/decisiones/`, CI.
+- PWA (vite-plugin-pwa): instalable, vertical, abre sin internet después de la primera visita; las versiones nuevas se aplican solo en el Inicio sin conteo abierto (`app/useActualizacion.ts`).
+- Falta: guía para grabar videos en finca, carpeta `ml/`, ADR en `docs/decisiones/`, CI.
 
 ## Comandos
 
@@ -36,7 +37,7 @@ Turborepo no está instalado todavía: con pocos paquetes basta `pnpm -r`. Se ag
 pnpm install
 pnpm test        # todas las pruebas
 pnpm typecheck
-pnpm e2e         # Playwright (necesita ffmpeg): sin scroll en 360×640, 390×844 y 412×915, y conteo en vivo con cámara falsa
+pnpm e2e         # Playwright (necesita ffmpeg): sin scroll en 360×640, 390×844 y 412×915, conteo en vivo con cámara falsa, y app compilada sin internet
 pnpm dev         # app web, cuando exista apps/web
 ```
 
