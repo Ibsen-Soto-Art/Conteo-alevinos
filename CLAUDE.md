@@ -29,7 +29,8 @@ Turborepo no está instalado todavía: con pocos paquetes basta `pnpm -r`. Se ag
 - `packages/counting-engine`: motor de conteo **clásico, sin entrenamiento**: umbral sobre fondo iluminado, manchas conectadas, rastreador por cercanía y cruce de línea. Las manchas grandes cuentan según área / área típica. El rastreador predice la posición con la velocidad de cada pista y recalcula el peso cuando una mancha se separa. Con pruebas sobre cuadros sintéticos.
 - `apps/web`: app del campesino (7 pantallas, navegación por hash, estado en `app/sesion.ts`, acciones que guardan en `app/acciones.ts`, IndexedDB con Dexie en `shared/datos/`) y `/laboratorio` con los controles técnicos. El motor corre en un Web Worker (`features/conteo/`). HTTPS de desarrollo para usar la cámara desde el celular.
 - PWA (vite-plugin-pwa): instalable, vertical, abre sin internet después de la primera visita; las versiones nuevas se aplican solo en el Inicio sin conteo abierto (`app/useActualizacion.ts`).
-- Falta: guía para grabar videos en finca, carpeta `ml/`, ADR en `docs/decisiones/`, CI.
+- CI en `.github/workflows/ci.yml`: install, typecheck, test, build y e2e en cada push y PR; publica en Cloudflare solo si pasa, en `main`.
+- Falta: guía para grabar videos en finca, carpeta `ml/`, ADR en `docs/decisiones/`.
 
 ## Comandos
 

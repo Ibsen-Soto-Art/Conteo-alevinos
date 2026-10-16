@@ -1,0 +1,111 @@
+# CI: en cada push y pull request instala, revisa tipos, corre las pruebas, compila y
+# corre Playwright. Si todo pasa en la rama main, publica en Cloudflare (y solo entonces).
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+permissions:
+  contents: read
+
+jobs:
+  verificar:
+    name: Instalar, revisar y probar
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+
+      # pnpm toma la versión de "packageManager" en package.json.
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+
+      - name: Instalar dependencias
+        run: pnpm install --frozen-lockfile
+
+      - name: Revisar tipos
+        run: pnpm typecheck
+
+      - name: Pruebas unitarias
+        run: pnpm test
+
+      - name: Compilar la app
+        run: pnpm build:web
+
+      - name: Guardar la app compilada
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-compilada
+          path: apps/web/dist
+          include-hidden-files: true
+          retention-days: 7
+
+      # Las pruebas de punta a punta generan con ffmpeg el video que hace de cámara.
+      - name: Instalar ffmpeg y Chromium para Playwright
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends ffmpeg
+          pnpm --filter @contador/web exec playwright install --with-deps chromium
+
+      - name: Pruebas de punta a punta (sin scroll, conteo en vivo, sin internet)
+        run: pnpm e2e
+
+      - name: Guardar el informe de Playwright si algo falló
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: informe-playwright
+          path: |
+            apps/web/playwright-report
+            apps/web/test-results
+          retention-days: 7
+
+  publicar:
+    name: Publicar en Cloudflare
+    needs: verificar
+    # Solo pushes a main que pasaron todo; nunca pull requests.
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    concurrency:
+      group: publicar
+      cancel-in-progress: false
+    environment:
+      name: produccion
+      url: https://conteo-alevinos.ibsensotart23.workers.dev
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Revisar que estén las claves de Cloudflare
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
+            echo "::error::Faltan los secretos CLOUDFLARE_API_TOKEN y CLOUDFLARE_ACCOUNT_ID. Ver docs/guias/desarrollo/publicar-una-version.md"
+            exit 1
+          fi
+
+      # Se publica exactamente lo que se compiló y se probó en «verificar».
+      - name: Traer la app compilada
+        uses: actions/download-artifact@v4
+        with:
+          name: app-compilada
+          path: apps/web/dist
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .node-version
+
+      - name: Publicar con wrangler
+        run: npx --yes wrangler@4.151.1 deploy

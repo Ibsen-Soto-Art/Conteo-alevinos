@@ -69,10 +69,23 @@ Cloudflare ahora muestra primero **Workers**. Se reconoce porque pide **Deploy c
 
 La dirección queda `https://conteo-alevinos.<su-subdominio>.workers.dev`; Cloudflare la muestra al terminar.
 
-## 4. Desde ahora
+## 4. Publicar solo si el CI pasa
 
-- Cada `git push` a `main` publica una versión nueva sola. En el proyecto, la pestaña **Deployments** muestra cada publicación y si la compilación salió bien.
-- Si una compilación falla, la versión anterior sigue publicada. En **Deployments**, toque la que falló y luego **View details** para ver el error.
+La compilación automática de Cloudflare publica cada push sin esperar a GitHub. Por eso la publicación la hace el CI (`.github/workflows/ci.yml`): el trabajo **Publicar en Cloudflare** corre solo en pushes a `main` y solo si **Instalar, revisar y probar** pasó, y publica exactamente la app que se probó. Para dejarlo así:
+
+1. **Crear un token en Cloudflare.** Arriba a la derecha, el ícono de persona → **Profile** → **API Tokens** → **Create Token**. En la plantilla **Edit Cloudflare Workers** toque **Use template**. En **Account Resources** elija **Include** y su cuenta; en **Zone Resources**, **All zones**. Toque **Continue to summary** → **Create Token** y copie el token (solo se muestra una vez).
+2. **Copiar el Account ID.** Es el número largo en la dirección del panel (`dash.cloudflare.com/<Account ID>/...`); también aparece en **Workers & Pages**, a la derecha, como **Account ID**.
+3. **Guardar los dos en GitHub.** En el repositorio: **Settings** → **Secrets and variables** → **Actions** → **New repository secret**. Cree `CLOUDFLARE_API_TOKEN` (el token) y `CLOUDFLARE_ACCOUNT_ID` (el Account ID), cada uno con **Add secret**.
+4. **Probar.** En GitHub: **Actions** → **CI** → la última ejecución de `main` → **Re-run jobs** → **Re-run all jobs**. Los dos trabajos deben quedar en verde.
+5. **Apagar la compilación de Cloudflare.** En Cloudflare: **Workers & Pages** → `conteo-alevinos` → **Settings** → **Build** → en **Git repository**, **Disconnect**. Desde ese momento solo publica el CI.
+6. *(Opcional)* Para que un pull request no se pueda unir con pruebas fallando: en GitHub, **Settings** → **Branches** → **Add branch ruleset** (o **Add rule**) para `main`, con **Require status checks to pass** y el chequeo **Instalar, revisar y probar**.
+
+Mientras no estén los secretos, el trabajo **Publicar en Cloudflare** falla con un aviso que lo explica (y la compilación de Cloudflare sigue publicando como antes).
+
+## 5. Desde ahora
+
+- Cada `git push` a `main` que pasa el CI publica una versión nueva sola. En GitHub, **Actions** muestra cada ejecución; en Cloudflare, **Deployments** muestra cada publicación.
+- Si el CI falla, no se publica y la versión anterior sigue en línea. En **Actions**, la ejecución en rojo dice qué paso falló; si fue Playwright, descargue **informe-playwright** al final de la página.
 - Para volver a una versión anterior: en **Deployments**, en los tres puntos de una publicación buena, **Rollback to this deployment**.
 - Los teléfonos que ya tienen la app reciben la versión nueva la próxima vez que la abran con internet; se aplica cuando están en el Inicio sin un conteo abierto.
 
@@ -83,6 +96,8 @@ La dirección queda `https://conteo-alevinos.<su-subdominio>.workers.dev`; Cloud
 - `.node-version`: Node 22.
 
 ## Comprobar antes de publicar
+
+El CI lo hace solo, pero se puede correr lo mismo en el computador:
 
 ```bash
 pnpm test && pnpm typecheck && pnpm e2e

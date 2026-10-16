@@ -1,5 +1,7 @@
 # Contador de alevinos
 
+[![CI](https://github.com/Ibsen-Soto-Art/Conteo-alevinos/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Ibsen-Soto-Art/Conteo-alevinos/actions/workflows/ci.yml)
+
 App web instalable para contar alevinos con la cámara del teléfono, sin internet.
 
 - Diseño completo: [docs/arquitectura.md](docs/arquitectura.md)
@@ -16,7 +18,7 @@ pnpm test
 
 ## Publicación
 
-La app se publica sola en Cloudflare (Workers, archivos estáticos) con cada `git push` a `main`: <https://conteo-alevinos.ibsensotart23.workers.dev>.
+La app se publica sola en Cloudflare (Workers, archivos estáticos) con cada `git push` a `main`, **solo si el CI pasa** (instalar, tipos, pruebas, compilación y Playwright): <https://conteo-alevinos.ibsensotart23.workers.dev>.
 
 - Con datos de ejemplo: <https://conteo-alevinos.ibsensotart23.workers.dev/?demo>
 - Laboratorio: <https://conteo-alevinos.ibsensotart23.workers.dev/laboratorio>
