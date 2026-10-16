@@ -30,7 +30,8 @@ Turborepo no está instalado todavía: con pocos paquetes basta `pnpm -r`. Se ag
 - `apps/web`: app del campesino (7 pantallas, navegación por hash, estado en `app/sesion.ts`, acciones que guardan en `app/acciones.ts`, IndexedDB con Dexie en `shared/datos/`) y `/laboratorio` con los controles técnicos. El motor corre en un Web Worker (`features/conteo/`). HTTPS de desarrollo para usar la cámara desde el celular.
 - PWA (vite-plugin-pwa): instalable, vertical, abre sin internet después de la primera visita; las versiones nuevas se aplican solo en el Inicio sin conteo abierto (`app/useActualizacion.ts`).
 - CI en `.github/workflows/ci.yml`: install, typecheck, test, build y e2e en cada push y PR; publica en Cloudflare solo si pasa, en `main`.
-- Falta: guía para grabar videos en finca, carpeta `ml/`, ADR en `docs/decisiones/`.
+- Guía para grabar videos de entrenamiento y plantilla CSV: `docs/guias/admin/`.
+- Falta: script de precisión, ADR en `docs/decisiones/`, carpeta `ml/`.
 
 ## Comandos
 
