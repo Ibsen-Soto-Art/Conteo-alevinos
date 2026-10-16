@@ -1,0 +1,18 @@
+# Cloudflare Pages: cabeceras de la app publicada.
+
+# El service worker y el manifiesto se revisan siempre, para que las versiones nuevas lleguen.
+/sw.js
+  Cache-Control: no-cache
+/manifest.webmanifest
+  Cache-Control: no-cache
+/index.html
+  Cache-Control: no-cache
+
+# Los archivos con huella en el nombre no cambian nunca.
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/*
+  Permissions-Policy: camera=(self), microphone=()
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: same-origin

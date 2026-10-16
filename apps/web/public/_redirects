@@ -1,0 +1,2 @@
+# Cloudflare Pages: el laboratorio es la misma app (index.html decide qué mostrar).
+/laboratorio  /index.html  200

@@ -8,10 +8,14 @@
     "build": "pnpm -r build",
     "test": "pnpm -r test",
     "typecheck": "pnpm -r typecheck",
-    "e2e": "pnpm --filter @contador/web e2e"
+    "e2e": "pnpm --filter @contador/web e2e",
+    "build:web": "pnpm --filter @contador/web build"
   },
   "devDependencies": {
     "typescript": "^7.0.2",
     "vitest": "^5.0.4"
+  },
+  "engines": {
+    "node": ">=22"
   }
 }

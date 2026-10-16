@@ -13,3 +13,7 @@ Necesitas Node 20 o superior y pnpm (`npm i -g pnpm`).
 pnpm install
 pnpm test
 ```
+
+## Publicación
+
+La app se publica sola en Cloudflare Pages con cada `git push` a `main`: <https://contador-alevinos.pages.dev>. Configuración y pasos: [docs/guias/desarrollo/publicar-una-version.md](docs/guias/desarrollo/publicar-una-version.md).
