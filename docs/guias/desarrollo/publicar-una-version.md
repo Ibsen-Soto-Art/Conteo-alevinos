@@ -53,6 +53,20 @@ En **Set up builds and deployments**:
 
 La primera compilación tarda unos 2 minutos. Cuando diga **Success**, toque **Continue to project** y abra la dirección `https://contador-alevinos.pages.dev`.
 
+## Si Cloudflare abre la pantalla de Workers
+
+Cloudflare ahora muestra primero **Workers**. Se reconoce porque pide **Deploy command** (`npx wrangler deploy`) y **Preview command**. También sirve: el repositorio trae `wrangler.jsonc`, que publica `apps/web/dist` con las mismas reglas (`_headers`, `_redirects` y cualquier dirección abre la app).
+
+| Campo | Valor |
+| --- | --- |
+| Project name | `conteo-alevinos` (debe ser igual a `name` en `wrangler.jsonc`) |
+| Build command | `npx pnpm@10.0.0 install --frozen-lockfile && npx pnpm@10.0.0 build:web` |
+| Deploy command | `npx wrangler deploy` |
+| Preview command | el que trae Cloudflare |
+| Variables (en **Advanced settings** → **Build variables**) | `NODE_VERSION` = `22`, `SKIP_DEPENDENCY_INSTALL` = `1` |
+
+La dirección queda `https://conteo-alevinos.<su-subdominio>.workers.dev`; Cloudflare la muestra al terminar.
+
 ## 4. Desde ahora
 
 - Cada `git push` a `main` publica una versión nueva sola. En el proyecto, la pestaña **Deployments** muestra cada publicación y si la compilación salió bien.
