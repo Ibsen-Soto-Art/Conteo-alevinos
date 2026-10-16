@@ -1,6 +1,8 @@
-# Publicar una versión (Cloudflare Pages)
+# Publicar una versión (Cloudflare)
 
-La app se publica sola en Cloudflare Pages cada vez que se hace `git push` a la rama `main` del repositorio `Ibsen-Soto-Art/Conteo-alevinos`. Cloudflare descarga el código, lo compila y lo publica con HTTPS. Esta guía explica cómo dejarlo configurado la primera vez.
+**Dirección publicada:** <https://conteo-alevinos.ibsensotart23.workers.dev> (proyecto `conteo-alevinos`, creado como Worker; ver «Si Cloudflare abre la pantalla de Workers»).
+
+La app se publica sola en Cloudflare cada vez que se hace `git push` a la rama `main` del repositorio `Ibsen-Soto-Art/Conteo-alevinos`. Cloudflare descarga el código, lo compila y lo publica con HTTPS. Esta guía explica cómo dejarlo configurado la primera vez.
 
 > Los nombres de los botones son los de la página de Cloudflare en octubre de 2026. Si alguno cambió un poco, busque el más parecido.
 
