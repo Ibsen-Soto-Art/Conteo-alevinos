@@ -30,6 +30,17 @@ test("es instalable: manifiesto vertical, a pantalla completa y con íconos", as
   }
 });
 
+test("con internet, /laboratorio y las rutas con # abren directo (sin redirigir al inicio)", async ({ page }) => {
+  await page.goto("/laboratorio");
+  await expect(page.getByRole("heading", { name: "Laboratorio del motor" })).toBeVisible();
+  expect(new URL(page.url()).pathname).toBe("/laboratorio");
+
+  await page.goto("/#/ayuda");
+  await expect(page.getByRole("heading", { name: "Cómo contar" })).toBeVisible();
+  await page.goto("/#/conteos");
+  await expect(page.getByRole("heading", { name: "Conteos" })).toBeVisible();
+});
+
 test("abre sin internet después de la primera visita, con la letra guardada", async ({ page, context }) => {
   await primeraVisita(page);
   await context.setOffline(true);

@@ -1,2 +1,4 @@
 # Cloudflare Pages: el laboratorio es la misma app (index.html decide qué mostrar).
-/laboratorio  /index.html  200
+# Se reescribe a «/» y no a «/index.html»: Cloudflare redirige /index.html a / y se perdería la ruta.
+/laboratorio   /  200
+/laboratorio/  /  200
