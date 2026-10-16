@@ -1,0 +1,4 @@
+# Preparar los datos (pasos 1 a 4 y COCO): livianos, sin PyTorch.
+numpy>=1.26
+opencv-python-headless>=4.9
+PyYAML>=6.0

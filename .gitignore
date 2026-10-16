@@ -32,6 +32,8 @@ claves/
 # datos y modelos de entrenamiento: no van al repositorio
 ml/data/
 ml/runs/
+ml/modelos/
+.pytest_cache/
 ml/.venv/
 .venv/
 __pycache__/

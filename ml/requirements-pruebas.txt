@@ -1,0 +1,3 @@
+# Pruebas de los pasos de datos (las corre la CI). No necesitan PyTorch.
+-r requirements-datos.txt
+pytest>=8.0
