@@ -128,9 +128,12 @@ jobs:
           name: app-compilada
           path: apps/web/dist
 
+      # setup-node v5 activa sola la caché de pnpm (por «packageManager» en package.json),
+      # pero aquí no se instala pnpm: solo hace falta Node para wrangler.
       - uses: actions/setup-node@v5
         with:
           node-version-file: .node-version
+          package-manager-cache: false
 
       - name: Publicar con wrangler
         run: npx --yes wrangler@4.151.1 deploy
