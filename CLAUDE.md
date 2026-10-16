@@ -32,7 +32,8 @@ Turborepo no está instalado todavía: con pocos paquetes basta `pnpm -r`. Se ag
 - CI en `.github/workflows/ci.yml`: install, typecheck, test, build y e2e en cada push y PR; publica en Cloudflare solo si pasa, en `main`.
 - Guía para grabar videos de entrenamiento y plantilla CSV: `docs/guias/admin/`.
 - `tests/precision`: `pnpm precision [carpeta]` pasa el motor por videos con conteo a mano (plantilla CSV) y da el error por video y por especie. Los ajustes (`Controles`, `configuracionMotor`, `tamanoProceso`) viven en `counting-engine` para que la app y el script midan igual.
-- Falta: ADR en `docs/decisiones/`, carpeta `ml/`.
+- ADR 0001 a 0007 en `docs/decisiones/` (0004 Supabase y 0006 licencia: propuestas). Una decisión nueva va en una ADR nueva.
+- Falta: carpeta `ml/`.
 
 ## Comandos
 
