@@ -22,6 +22,14 @@ const NOMBRE_FUENTE: Record<Geometria["canal"]["fuente"], string> = {
   todo: "el cuadro entero (no se ve el borde del canal)",
 };
 
+const NOMBRE_FLUJO = { bien: "bien", rapido: "rápido", "muy-rapido": "muy rápido: baje la inclinación" } as const;
+
+/** Cuadros por segundo que entrega la cámara (no aplica a un video cargado). */
+function cuadrosDeLaCamara(video: HTMLVideoElement | null): number | null {
+  const stream = video?.srcObject;
+  return stream instanceof MediaStream ? (stream.getVideoTracks()[0]?.getSettings().frameRate ?? null) : null;
+}
+
 const NOMBRE_FONDO: Record<string, string> = {
   aprendiendo: "aprendiendo el canal vacío",
   esperando: "esperando: hay movimiento",
@@ -45,6 +53,8 @@ export function Laboratorio() {
     areaTipica: null as number | null,
     fondo: null as Resultado["fondo"],
     origen: null as Resultado["origenTamano"],
+    flujo: null as Resultado["flujo"],
+    cpsCamara: null as number | null,
   });
   const [error, setError] = useState<string | null>(null);
 
@@ -80,6 +90,8 @@ export function Laboratorio() {
         areaTipica: r.areaTipica,
         fondo: r.fondo,
         origen: r.origenTamano,
+        flujo: r.flujo,
+        cpsCamara: cuadrosDeLaCamara(videoRef.current),
       });
       contadorCps.current = { desde: ahora, cuadros: 0 };
     }
@@ -214,7 +226,7 @@ export function Laboratorio() {
     }
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: { ideal: "environment" }, width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 30 } },
+        video: { facingMode: { ideal: "environment" }, width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 60 } },
         audio: false,
       });
       apagarFuente();
@@ -351,9 +363,17 @@ export function Laboratorio() {
                     : "sin perfil"}
               {estado.areaTipica !== null && ` · área típica ${Math.round(estado.areaTipica)} px`}
             </dd>
-            <dt>Velocidad</dt>
+            <dt>Cuadros por segundo</dt>
             <dd>
-              {estado.cps} cuadros/s · motor {estado.ms.toFixed(1)} ms
+              cámara {estado.cpsCamara ? Math.round(estado.cpsCamara) : "—"} · procesados {estado.cps} · motor {estado.ms.toFixed(1)} ms por cuadro
+            </dd>
+            <dt>Flujo</dt>
+            <dd>
+              {estado.flujo
+                ? `${NOMBRE_FLUJO[estado.flujo.estado]} · ${estado.flujo.velocidad.toFixed(1)} px por cuadro (límite ${estado.flujo.limite.toFixed(1)}: ancho de la franja ÷ 3)` +
+                  (estado.flujo.pxPorSegundo ? ` · ${Math.round(estado.flujo.pxPorSegundo)} px/s` : "") +
+                  (geometria?.pxPorCmRecorte && estado.flujo.pxPorSegundo ? ` · ${(estado.flujo.pxPorSegundo / geometria.pxPorCmRecorte).toFixed(0)} cm/s` : "")
+                : "nada se mueve"}
             </dd>
           </dl>
         </section>

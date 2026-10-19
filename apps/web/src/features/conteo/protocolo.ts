@@ -5,6 +5,7 @@ import {
   type Deteccion,
   type EstadisticasLote,
   type EstadoFondo,
+  type Flujo,
   type Franja,
   type PerfilForma,
   type SentidoFlujo,
@@ -137,6 +138,10 @@ export type MensajeDelMotor =
       franja: Franja;
       /** De dónde sale el tamaño de un alevino: Prueba de 100, marcas, o todavía no se sabe. */
       origenTamano: "lote" | "escala" | "amplio" | null;
+      /** Qué tan rápido pasan frente al límite de la franja; null si nada se mueve. */
+      flujo: Flujo | null;
+      /** Cuadros por segundo que procesa el motor. */
+      cuadrosPorSegundo: number | null;
     }
   /** Análisis del canal, en píxeles del cuadro completo que se analizó (`ancho` × `alto`). */
   | { tipo: "canal"; analisis: AnalisisCanal; ancho: number; alto: number }

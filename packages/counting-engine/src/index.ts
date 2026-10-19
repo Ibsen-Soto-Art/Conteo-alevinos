@@ -10,3 +10,4 @@ export * from "./manchas";
 export * from "./forma";
 export * from "./franja";
 export * from "./canal";
+export * from "./flujo";

@@ -1,4 +1,4 @@
-import { hayPocaLuz, type EstadisticasLote, type EstadoFondo, type PerfilForma } from "@contador/counting-engine";
+import { hayPocaLuz, type EstadisticasLote, type EstadoFlujo, type EstadoFondo, type PerfilForma } from "@contador/counting-engine";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useMotorCompartido } from "../../app/MotorContexto";
 import { leerAjustes } from "./ajustes";
@@ -35,6 +35,9 @@ export function useConteoEnVivo({
   const captura = useRef<Captura | null>(null);
   const [estado, setEstado] = useState<EstadoCamara>("iniciando");
   const [luz, setLuz] = useState<Luz>(null);
+  const [flujo, setFlujo] = useState<EstadoFlujo | null>(null);
+  /** Solo en ?demo: un aviso de flujo forzado por las pruebas, que gana sobre lo medido. */
+  const flujoForzado = useRef<EstadoFlujo | null | undefined>(undefined);
   const [geometria, setGeometria] = useState<Geometria | null>(null);
   const [preparacion, setPreparacion] = useState<{ estado: Preparacion; progreso: number }>({ estado: "buscando-canal", progreso: 0 });
   const [intento, setIntento] = useState(0);
@@ -54,6 +57,7 @@ export function useConteoEnVivo({
       if (r.sumados > 0) alSumar.current(r.sumados);
       brillo = brillo === null ? r.brillo : brillo + (r.brillo - brillo) * SUAVIZADO_BRILLO;
       setLuz(hayPocaLuz(brillo) ? "poca" : "bien");
+      setFlujo(flujoForzado.current !== undefined ? flujoForzado.current : (r.flujo?.estado ?? null));
       const f = r.fondo ?? { estado: "listo" as const, progreso: 1 };
       // Solo cambia el estado cuando cambia algo que se ve (el progreso en pasos de 10 %).
       setPreparacion((p) => (p.estado === f.estado && Math.round(p.progreso * 10) === Math.round(f.progreso * 10) ? p : f));
@@ -78,7 +82,8 @@ export function useConteoEnVivo({
     setEstado("iniciando");
     navigator.mediaDevices
       .getUserMedia({
-        video: { facingMode: { ideal: "environment" }, width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 30 } },
+        // La mayor cantidad de cuadros por segundo que dé la cámara: un alevino rápido se ve en más cuadros.
+        video: { facingMode: { ideal: "environment" }, width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 60 } },
         audio: false,
       })
       .then(async (s) => {
@@ -124,5 +129,15 @@ export function useConteoEnVivo({
     };
   }, [activo, estado, motor, ajustes]);
 
-  return { videoRef, estado, luz, ajustes, geometria, preparacion, reintentar: () => setIntento((i) => i + 1) };
+  // Solo en el modo de ejemplo (?demo): las pruebas fuerzan el aviso de flujo para revisar que quepa.
+  useEffect(() => {
+    const forzar = (e: Event) => {
+      flujoForzado.current = (e as CustomEvent<EstadoFlujo | null>).detail;
+      setFlujo(flujoForzado.current);
+    };
+    window.addEventListener("demo-flujo", forzar);
+    return () => window.removeEventListener("demo-flujo", forzar);
+  }, []);
+
+  return { videoRef, estado, luz, flujo, ajustes, geometria, preparacion, reintentar: () => setIntento((i) => i + 1) };
 }

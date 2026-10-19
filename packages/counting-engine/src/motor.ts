@@ -1,6 +1,7 @@
 import { areaMediana, detectarManchas, pesoDeMancha, type OpcionesDetector } from "./detector";
 import { ModeloFondo, type EstadoFondo, type OpcionesFondo } from "./fondo";
 import { clasificar, estadisticasDe, perfilEnPixeles, pesoPorForma, unirPedazos, type EstadisticasLote, type PerfilForma, type PerfilPx } from "./forma";
+import { MedidorFlujo, type Flujo } from "./flujo";
 import { actualizarConteo, enFlujo, ladoDe, type Franja } from "./franja";
 import { encontrarManchas, type Medidas } from "./manchas";
 import { cerrar } from "./morfologia";
@@ -43,6 +44,8 @@ export interface ResultadoCuadro {
   fondo: { estado: EstadoFondo; progreso: number } | null;
   /** El perfil en píxeles con el que se midió este cuadro; null sin perfil. */
   perfil: PerfilPx | null;
+  /** Qué tan rápido pasan los alevinos frente al límite de la franja; null si nada se mueve. */
+  flujo: Flujo | null;
 }
 
 const MUESTRAS_PARA_AREA = 60;
@@ -71,19 +74,30 @@ export class MotorConteo {
   /** Medidas de alevinos sueltos para aprender el lote cuando no viene de la Prueba de 100. */
   private muestrasLote: Medidas[] = [];
   private loteAprendido: EstadisticasLote | null = null;
+  private medidorFlujo = new MedidorFlujo();
+  /** Momentos (ms) de los últimos cuadros, para saber cuántos por segundo se procesan. */
+  private tiempos: number[] = [];
+  /** Largo del canal sobre el eje del flujo en el último cuadro (para no pasarse con la franja). */
+  private largoEje = 0;
 
   constructor(private config: ConfiguracionMotor) {
     this.rastreador = new Rastreador(config.rastreador);
     this.fondo = config.fondo ? new ModeloFondo(config.fondo) : null;
   }
 
-  procesar(cuadro: CuadroGris): ResultadoCuadro {
+  /** `tiempo`: momento del cuadro en ms (para medir cuadros por segundo y la velocidad en px/s). */
+  procesar(cuadro: CuadroGris, tiempo?: number): ResultadoCuadro {
     const estadoFondo = () => (this.fondo ? { estado: this.fondo.estado, progreso: this.fondo.progreso } : null);
+    if (tiempo !== undefined) {
+      this.tiempos.push(tiempo);
+      if (this.tiempos.length > 30) this.tiempos.shift();
+    }
+    this.largoEje = this.config.sentido === "abajo" || this.config.sentido === "arriba" ? cuadro.alto : cuadro.ancho;
 
     // Mientras aprende el canal vacío no se cuenta nada.
     if (this.fondo && !this.fondo.listo && this.fondo.estado !== "sin-fondo") {
       this.fondo.aprender(cuadro);
-      return { total: this.total, sumadosEnEsteCuadro: 0, detecciones: [], descartadas: [], pistas: this.rastreador.activas, fondo: estadoFondo(), perfil: this.perfilPx() };
+      return { total: this.total, sumadosEnEsteCuadro: 0, detecciones: [], descartadas: [], pistas: this.rastreador.activas, fondo: estadoFondo(), perfil: this.perfilPx(), flujo: null };
     }
 
     const { detecciones, descartadas } = this.config.perfil || this.fondo ? this.detectar(cuadro) : this.detectarComoAntes(cuadro);
@@ -105,7 +119,9 @@ export class MotorConteo {
       sumados += actualizarConteo(pista, franja, sentido);
     }
     this.total += sumados;
+    const flujo = this.medidorFlujo.observar(this.rastreador.activas, franja.fin - franja.inicio, this.cuadrosPorSegundo);
     return {
+      flujo,
       total: this.total,
       sumadosEnEsteCuadro: sumados,
       detecciones: detecciones.filter((_, i) => !quietas.has(i)),
@@ -169,9 +185,29 @@ export class MotorConteo {
     return { detecciones, descartadas };
   }
 
-  /** La franja de conteo; sin franja, una línea en la posición de siempre. */
+  /**
+   * La franja de conteo; sin franja, una línea en la posición de siempre. Con el perfil, la escala
+   * y los cuadros por segundo, se ensancha (desde su centro) lo necesario para que un alevino a la
+   * velocidad máxima del perfil se vea al menos 3 cuadros dentro de ella.
+   */
   get franja(): Franja {
-    return this.config.franja ?? { inicio: this.config.posicionLinea, fin: this.config.posicionLinea };
+    const base = this.config.franja ?? { inicio: this.config.posicionLinea, fin: this.config.posicionLinea };
+    const { perfil, pxPorCm } = this.config;
+    const cps = this.cuadrosPorSegundo;
+    if (!this.config.franja || !perfil || !pxPorCm || !cps) return base;
+    const minimo = Math.min((3 * perfil.velocidadCmS.maxima * pxPorCm) / cps, this.largoEje * 0.35);
+    const ancho = base.fin - base.inicio;
+    if (ancho >= minimo) return base;
+    const centro = (base.inicio + base.fin) / 2;
+    return { inicio: centro - minimo / 2, fin: centro + minimo / 2 };
+  }
+
+  /** Cuadros por segundo que está procesando (de los tiempos que llegan con cada cuadro). */
+  get cuadrosPorSegundo(): number | null {
+    const t = this.tiempos;
+    if (t.length < 5) return null;
+    const lapso = t[t.length - 1]! - t[0]!;
+    return lapso > 0 ? ((t.length - 1) * 1000) / lapso : null;
   }
 
   /** El perfil en píxeles con lo mejor que se sepa del tamaño: Prueba de 100, escala o lo aprendido. */
@@ -197,6 +233,7 @@ export class MotorConteo {
   reiniciarConteo() {
     this.total = 0;
     this.rastreador.reiniciar();
+    this.medidorFlujo.reiniciar();
   }
 
   actualizarConfiguracion(parcial: Partial<ConfiguracionMotor>) {

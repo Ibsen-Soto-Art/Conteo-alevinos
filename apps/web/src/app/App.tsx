@@ -66,7 +66,11 @@ export function App() {
 function EngancheDemo() {
   const { despachar } = useSesion();
   useEffect(() => {
-    (window as unknown as { __demo?: unknown }).__demo = { despachar };
+    (window as unknown as { __demo?: unknown }).__demo = {
+      despachar,
+      /** Fuerza el aviso de velocidad del flujo (para revisar que quepa en la pantalla). */
+      flujo: (estado: string | null) => window.dispatchEvent(new CustomEvent("demo-flujo", { detail: estado })),
+    };
   }, [despachar]);
   return null;
 }

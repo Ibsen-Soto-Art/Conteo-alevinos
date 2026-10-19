@@ -11,7 +11,7 @@ import { Pantalla } from "../../shared/ui/Pantalla";
 import { Redirigir } from "../../shared/ui/Redirigir";
 import { useWakeLock } from "../../shared/useWakeLock";
 import { useConteoEnVivo } from "../conteo/useConteoEnVivo";
-import { AvisoLuz, VistaCamara } from "../conteo/VistaCamara";
+import { AvisoFlujo, AvisoLuz, VistaCamara } from "../conteo/VistaCamara";
 
 const MANO = PRUEBA_A_MANO;
 
@@ -50,6 +50,7 @@ export function Prueba100() {
               onReintentar={vivo.reintentar}
             >
               <AvisoLuz luz={vivo.luz} className="camara-luz" />
+              <AvisoFlujo flujo={vivo.flujo} className="camara-flujo" />
             </VistaCamara>
           )}
         </div>

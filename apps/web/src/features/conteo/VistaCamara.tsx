@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode, type RefObject } from "react";
 import { useMotorCompartido } from "../../app/MotorContexto";
-import { IconoAviso, IconoProblema, IconoSol } from "../../shared/ui/Iconos";
+import type { EstadoFlujo } from "@contador/counting-engine";
+import { IconoAviso, IconoChulo, IconoProblema, IconoSol } from "../../shared/ui/Iconos";
 import { recorteAVideo, type Geometria } from "./captura";
 import { flujoVertical, posicionParaVerFranja, puntoEnVista, type Controles, type MensajeDelMotor } from "./protocolo";
 import type { EstadoCamara, Luz, Preparacion } from "./useConteoEnVivo";
@@ -179,6 +180,28 @@ export function VistaCamara({
       )}
       {children}
     </div>
+  );
+}
+
+/** Qué tan rápido pasan: para ajustar la inclinación del canal hasta verlo en verde. */
+export function AvisoFlujo({ flujo, className = "" }: { flujo: EstadoFlujo | null; className?: string }) {
+  if (flujo === null) return null;
+  if (flujo === "bien")
+    return (
+      <span className={`estado estado-exito ${className}`}>
+        <IconoChulo /> Flujo bien
+      </span>
+    );
+  if (flujo === "rapido")
+    return (
+      <span className={`estado estado-aviso ${className}`}>
+        <IconoAviso /> Flujo rápido
+      </span>
+    );
+  return (
+    <span className={`estado estado-problema ${className}`} role="alert">
+      <IconoProblema /> Muy rápido: baje la inclinación
+    </span>
   );
 }
 

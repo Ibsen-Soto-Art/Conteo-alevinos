@@ -113,6 +113,23 @@ const PANTALLAS: { nombre: string; ruta: string; antes?: (p: Page) => Promise<vo
     },
   },
   {
+    nombre: "contando: muy rápido (el aviso más largo de la cámara)",
+    ruta: "contando",
+    antes: async (p) => {
+      await p.evaluate(() => (window as unknown as { __demo: { flujo: (e: string) => void } }).__demo.flujo("muy-rapido"));
+      await expect(p.getByText("Muy rápido: baje la inclinación")).toBeVisible();
+    },
+  },
+  {
+    nombre: "prueba de 100: muy rápido",
+    ruta: "prueba",
+    antes: async (p) => {
+      await p.getByRole("button", { name: "Repetir" }).click();
+      await p.evaluate(() => (window as unknown as { __demo: { flujo: (e: string) => void } }).__demo.flujo("muy-rapido"));
+      await expect(p.getByText("Muy rápido: baje la inclinación")).toBeVisible();
+    },
+  },
+  {
     nombre: "contando: ¿volver a cero?",
     ruta: "contando",
     antes: async (p) => {

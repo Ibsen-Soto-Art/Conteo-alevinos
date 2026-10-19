@@ -657,6 +657,15 @@ html:not(.modo-laboratorio) body {
   left: 8px;
 }
 
+/* Velocidad del flujo: abajo a la izquierda, sobre la imagen. */
+.camara-flujo {
+  position: absolute;
+  left: 8px;
+  bottom: 8px;
+  max-width: calc(100% - 16px);
+  font-size: clamp(0.9rem, min(2.4dvh, 4.2vw), 1.1rem);
+}
+
 .camara-bolsa {
   right: 8px;
 }
