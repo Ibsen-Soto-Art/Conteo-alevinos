@@ -9,7 +9,7 @@ const numero = (texto: string | null) => Number((texto ?? "").replace(/\D/g, "")
 const leer = async (page: Page, selector: string) => numero(await page.locator(selector).textContent());
 
 test("cuenta, guarda la bolsa y el conteo sigue ahí al recargar", async ({ page }) => {
-  test.setTimeout(120_000);
+  test.setTimeout(180_000);
   await page.goto("/#/");
   await expect(page.getByText("Todo guardado")).toBeVisible();
   await expect(page.locator(".ultimo-conteo")).toHaveCount(0);
@@ -20,7 +20,7 @@ test("cuenta, guarda la bolsa y el conteo sigue ahí al recargar", async ({ page
   await page.getByRole("button", { name: /Siguiente/ }).click();
 
   // Prueba de 100: se espera a que la app cuente cerca de 100 y se da por terminada.
-  await expect.poll(() => leer(page, ".prueba-numero"), { timeout: 60_000, intervals: [100] }).toBeGreaterThanOrEqual(96);
+  await expect.poll(() => leer(page, ".prueba-numero"), { timeout: 90_000, intervals: [100] }).toBeGreaterThanOrEqual(96);
   await page.getByRole("button", { name: "Ya pasaron todos" }).click();
   await expect(page.getByText("Prueba buena")).toBeVisible();
   await page.getByRole("button", { name: /Siguiente/ }).click();
@@ -37,7 +37,7 @@ test("cuenta, guarda la bolsa y el conteo sigue ahí al recargar", async ({ page
   await expect(page.locator(".contador-numero")).toHaveText("0");
   await expect(page.locator(".total-hoy strong")).toHaveText("0");
   await expect(page.getByRole("button", { name: "Cerrar bolsa" })).toBeDisabled();
-  await expect.poll(() => leer(page, ".contador-numero"), { timeout: 30_000 }).toBeGreaterThan(30);
+  await expect.poll(() => leer(page, ".contador-numero"), { timeout: 45_000 }).toBeGreaterThan(30);
 
   await page.getByRole("button", { name: "Cerrar bolsa" }).click();
   await expect(page.getByText("¡Bolsa 1 lista!")).toBeVisible();

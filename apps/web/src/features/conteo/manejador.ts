@@ -1,5 +1,5 @@
-import { MotorConteo, aGris, brilloMedio } from "@contador/counting-engine";
-import { configuracionMotor, type Controles, type MensajeAlMotor, type MensajeDelMotor } from "./protocolo";
+import { MotorConteo, aGris, analizarCanal, brilloMedio, combinarMaximo, type CuadroGris } from "@contador/counting-engine";
+import { configuracionMotor, type ConfiguracionContar, type MensajeAlMotor, type MensajeDelMotor } from "./protocolo";
 
 /**
  * Lógica del Web Worker, separada para poder probarla sin navegador.
@@ -7,35 +7,50 @@ import { configuracionMotor, type Controles, type MensajeAlMotor, type MensajeDe
  */
 export function crearManejador(reloj: () => number = () => performance.now()) {
   let motor: MotorConteo | null = null;
-  let tamano = { ancho: 0, alto: 0 };
-  let controles: Controles | null = null;
+  let actual: ConfiguracionContar | null = null;
   let gris: Uint8Array | undefined;
+  let cuadrosCanal: CuadroGris[] = [];
 
   return function manejar(msg: MensajeAlMotor): MensajeDelMotor | null {
     switch (msg.tipo) {
+      case "canal": {
+        cuadrosCanal.push(aGris(new Uint8ClampedArray(msg.rgba), msg.ancho, msg.alto));
+        if (!msg.ultimo) return null;
+        const combinado = combinarMaximo(cuadrosCanal);
+        cuadrosCanal = [];
+        return { tipo: "canal", analisis: analizarCanal(combinado), ancho: msg.ancho, alto: msg.alto };
+      }
       case "configurar": {
-        const config = configuracionMotor(msg.controles, msg.ancho, msg.alto);
-        const mismoTamano = motor && tamano.ancho === msg.ancho && tamano.alto === msg.alto;
-        if (!motor || !mismoTamano) {
-          motor = new MotorConteo(config);
-          gris = new Uint8Array(msg.ancho * msg.alto);
+        const { tipo: _, ...nueva } = msg;
+        const config = {
+          ...configuracionMotor(nueva.controles, nueva.ancho, nueva.alto),
+          perfil: nueva.perfil ?? null,
+          pxPorCm: nueva.pxPorCm ?? null,
+          lote: nueva.lote ?? null,
+        };
+        const mismoTamano = motor && actual?.ancho === nueva.ancho && actual?.alto === nueva.alto;
+        if (!motor || !mismoTamano || Boolean(actual?.fondo) !== Boolean(nueva.fondo)) {
+          motor = new MotorConteo({ ...config, fondo: nueva.fondo ? {} : null });
+          gris = new Uint8Array(nueva.ancho * nueva.alto);
         } else {
           // El rastreador solo se rehace si cambia su distancia, para no perder las pistas en vivo.
-          const cambiaRastreador = controles?.distanciaMaxima !== msg.controles.distanciaMaxima;
+          const cambiaRastreador = actual?.controles.distanciaMaxima !== nueva.controles.distanciaMaxima;
           motor.actualizarConfiguracion({
             detector: config.detector,
             posicionLinea: config.posicionLinea,
             franja: config.franja,
             sentido: config.sentido,
+            perfil: config.perfil,
+            pxPorCm: config.pxPorCm,
+            lote: config.lote,
             ...(cambiaRastreador ? { rastreador: config.rastreador } : {}),
           });
         }
-        tamano = { ancho: msg.ancho, alto: msg.alto };
-        controles = msg.controles;
+        actual = nueva;
         return null;
       }
       case "cuadro": {
-        if (!motor || msg.ancho !== tamano.ancho || msg.alto !== tamano.alto) {
+        if (!motor || msg.ancho !== actual?.ancho || msg.alto !== actual?.alto) {
           return { tipo: "error", mensaje: "El motor no está configurado para este tamaño de cuadro." };
         }
         const inicio = reloj();
@@ -46,12 +61,16 @@ export function crearManejador(reloj: () => number = () => performance.now()) {
           total: r.total,
           sumados: r.sumadosEnEsteCuadro,
           detecciones: r.detecciones,
+          descartadas: r.descartadas,
           pistas: r.pistas.map(({ id, x, y, peso, contada }) => ({ id, x, y, peso, contada })),
           areaTipica: motor.areaTipica,
           ancho: msg.ancho,
           alto: msg.alto,
           brillo: brilloMedio(cuadro),
           ms: reloj() - inicio,
+          fondo: r.fondo,
+          franja: motor.franja,
+          origenTamano: r.perfil?.origen ?? null,
         };
       }
       case "reiniciar":
@@ -59,6 +78,9 @@ export function crearManejador(reloj: () => number = () => performance.now()) {
         return null;
       case "olvidarArea":
         motor?.olvidarAreaTipica();
+        return null;
+      case "reiniciarFondo":
+        motor?.reiniciarFondo();
         return null;
     }
   };

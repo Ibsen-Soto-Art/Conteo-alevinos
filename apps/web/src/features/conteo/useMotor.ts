@@ -25,8 +25,8 @@ export function useMotor(alResponder: (r: MensajeDelMotor) => void) {
     };
   }, []);
 
-  const enviar = useCallback((msg: MensajeAlMotor) => {
-    worker.current?.postMessage(msg);
+  const enviar = useCallback((msg: MensajeAlMotor, transferir: Transferable[] = []) => {
+    worker.current?.postMessage(msg, transferir);
   }, []);
 
   /** Envía un cuadro si el motor está libre. Devuelve false si lo saltó. */

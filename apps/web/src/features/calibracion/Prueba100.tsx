@@ -1,4 +1,5 @@
-import { calcularCalibracion } from "@contador/domain";
+import { calcularCalibracion, perfilDe } from "@contador/domain";
+import { useMemo } from "react";
 import { PRUEBA_A_MANO } from "../../app/acciones";
 import { useMotorCompartido } from "../../app/MotorContexto";
 import { navegar } from "../../app/rutas";
@@ -21,7 +22,8 @@ export function Prueba100() {
   const motor = useMotorCompartido();
   const terminada = estado.pruebaApp !== null;
   const enVivo = estado.pruebaEnVivo;
-  const vivo = useConteoEnVivo({ activo: !terminada, onSumados: (n) => despachar({ tipo: "sumarPrueba", cantidad: n }) });
+  const perfil = useMemo(() => (estado.especie && estado.talla ? perfilDe(estado.especie, estado.talla) : null), [estado.especie, estado.talla]);
+  const vivo = useConteoEnVivo({ activo: !terminada, onSumados: (n) => despachar({ tipo: "sumarPrueba", cantidad: n }), perfil });
   useWakeLock(!terminada);
 
   const contados = estado.pruebaApp ?? enVivo;
@@ -43,6 +45,8 @@ export function Prueba100() {
               videoRef={vivo.videoRef}
               estado={vivo.estado}
               ajustes={vivo.ajustes}
+              geometria={vivo.geometria}
+              preparacion={vivo.preparacion}
               onReintentar={vivo.reintentar}
             >
               <AvisoLuz luz={vivo.luz} className="camara-luz" />

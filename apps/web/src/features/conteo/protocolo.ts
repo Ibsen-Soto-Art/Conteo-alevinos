@@ -1,10 +1,21 @@
-import { flujoVertical, type Controles, type Deteccion, type SentidoFlujo } from "@contador/counting-engine";
+import {
+  flujoVertical,
+  type AnalisisCanal,
+  type Controles,
+  type Deteccion,
+  type EstadisticasLote,
+  type EstadoFondo,
+  type Franja,
+  type PerfilForma,
+  type SentidoFlujo,
+} from "@contador/counting-engine";
 
 // Los ajustes y su paso a configuración viven en el motor: la app y el script de
 // precisión (tests/precision) cuentan con exactamente lo mismo.
 export {
   CONTROLES_INICIALES,
   LADO_PROCESO,
+  franjaPx,
   configuracionMotor,
   flujoVertical,
   franjaPorcentaje,
@@ -31,21 +42,40 @@ export function lineaEnVista(
 }
 
 /**
- * Pasa un punto del cuadro procesado (320 px) a la vista que muestra el video con
- * `object-fit: cover`. Devuelve también la escala, para el tamaño de las marcas.
+ * Pasa un punto de una imagen (`proceso`) a la vista que la muestra con `object-fit: cover`
+ * y `object-position: posicion` (fracciones de 0 a 1; por defecto centrada). Devuelve también la
+ * escala, para el tamaño de las marcas.
  */
 export function puntoEnVista(
   x: number,
   y: number,
   proceso: { ancho: number; alto: number },
   vista: { ancho: number; alto: number },
+  posicion: { x: number; y: number } = { x: 0.5, y: 0.5 },
 ): { x: number; y: number; escala: number } {
   const escala = Math.max(vista.ancho / proceso.ancho, vista.alto / proceso.alto);
   return {
-    x: x * escala - (proceso.ancho * escala - vista.ancho) / 2,
-    y: y * escala - (proceso.alto * escala - vista.alto) / 2,
+    x: x * escala - (proceso.ancho * escala - vista.ancho) * posicion.x,
+    y: y * escala - (proceso.alto * escala - vista.alto) * posicion.y,
     escala,
   };
+}
+
+/**
+ * Qué parte del video mostrar (para `object-position`) para que la franja de conteo siempre se
+ * vea, aunque la vista sea una franja ancha y baja: el punto de la franja queda a la vista.
+ */
+export function posicionParaVerFranja(
+  zona: { x: number; y: number; ancho: number; alto: number },
+  video: { ancho: number; alto: number },
+  ajustes: Pick<Controles, "lineaPorcentaje" | "sentido">,
+): { x: number; y: number } {
+  const centro = Math.min(1, Math.max(0, ajustes.lineaPorcentaje / 100));
+  const cx = (zona.x + zona.ancho / 2) / video.ancho;
+  const cy = (zona.y + zona.alto / 2) / video.alto;
+  return flujoVertical(ajustes.sentido)
+    ? { x: cx, y: (zona.y + centro * zona.alto) / video.alto }
+    : { x: (zona.x + centro * zona.ancho) / video.ancho, y: cy };
 }
 
 /** Lo mínimo de cada pista que la página necesita para dibujarla. */
@@ -57,13 +87,32 @@ export interface PistaVista {
   contada: boolean;
 }
 
+/** Lo que el motor necesita para contar: ajustes, tamaño del recorte y lo que se sabe del pez. */
+export interface ConfiguracionContar {
+  controles: Controles;
+  ancho: number;
+  alto: number;
+  /** Perfil de la especie y tamaño (packages/domain/src/perfiles.ts); null = contar sin filtro de forma. */
+  perfil?: PerfilForma | null;
+  /** Píxeles por cm en el recorte, si se encontraron las 4 marcas del canal. */
+  pxPorCm?: number | null;
+  /** Lo que midió la Prueba de 100 de este lote. */
+  lote?: EstadisticasLote | null;
+  /** Aprender el canal vacío antes de contar. */
+  fondo?: boolean;
+}
+
 export type MensajeAlMotor =
-  | { tipo: "configurar"; controles: Controles; ancho: number; alto: number }
+  /** Un cuadro completo para buscar el canal y sus marcas; con `ultimo` contesta el análisis. */
+  | { tipo: "canal"; ancho: number; alto: number; rgba: ArrayBuffer; ultimo: boolean }
+  | ({ tipo: "configurar" } & ConfiguracionContar)
   | { tipo: "cuadro"; ancho: number; alto: number; rgba: ArrayBuffer }
   /** Contador a cero para una bolsa nueva; conserva lo aprendido del lote. */
   | { tipo: "reiniciar" }
-  /** Lote nuevo: vuelve a aprender el área típica de un alevino. */
-  | { tipo: "olvidarArea" };
+  /** Lote nuevo: vuelve a aprender el tamaño de un alevino. */
+  | { tipo: "olvidarArea" }
+  /** Volver a mirar el canal vacío (se empieza a contar, se movió el celular). */
+  | { tipo: "reiniciarFondo" };
 
 export type MensajeDelMotor =
   | {
@@ -72,6 +121,8 @@ export type MensajeDelMotor =
       total: number;
       sumados: number;
       detecciones: Deteccion[];
+      /** Manchas descartadas, con su motivo (tamaño, forma, burbuja, quieto). */
+      descartadas: Deteccion[];
       pistas: PistaVista[];
       areaTipica: number | null;
       ancho: number;
@@ -80,5 +131,13 @@ export type MensajeDelMotor =
       brillo: number;
       /** Milisegundos que tardó el motor en este cuadro. */
       ms: number;
+      /** Cómo va el aprendizaje del canal vacío; null si no se usa fondo. */
+      fondo: { estado: EstadoFondo; progreso: number } | null;
+      /** Franja de conteo en píxeles del recorte. */
+      franja: Franja;
+      /** De dónde sale el tamaño de un alevino: Prueba de 100, marcas, o todavía no se sabe. */
+      origenTamano: "lote" | "escala" | "amplio" | null;
     }
+  /** Análisis del canal, en píxeles del cuadro completo que se analizó (`ancho` × `alto`). */
+  | { tipo: "canal"; analisis: AnalisisCanal; ancho: number; alto: number }
   | { tipo: "error"; mensaje: string };

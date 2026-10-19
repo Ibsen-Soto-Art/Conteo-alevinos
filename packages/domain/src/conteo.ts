@@ -10,6 +10,24 @@ export interface Lote {
   /** Perfil de especie y tamaño con el que se cuenta (perfiles.ts) y su versión. */
   perfilId?: string;
   versionPerfiles?: string;
+  /**
+   * Lo que midió la Prueba de 100 de los alevinos de este lote, en píxeles del recorte del canal
+   * (mediana y dispersión de largo, ancho, área y relación largo/ancho).
+   */
+  estadisticas?: EstadisticasMedidas | null;
+}
+
+export interface MedidaRobusta {
+  mediana: number;
+  dispersion: number;
+}
+
+export interface EstadisticasMedidas {
+  largo: MedidaRobusta;
+  ancho: MedidaRobusta;
+  area: MedidaRobusta;
+  relacion: MedidaRobusta;
+  muestras: number;
 }
 
 export interface Conteo {

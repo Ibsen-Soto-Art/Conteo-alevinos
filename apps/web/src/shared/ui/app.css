@@ -597,24 +597,29 @@ html:not(.modo-laboratorio) body {
   gap: var(--hueco);
 }
 
-/* Franja de conteo: dos bordes amarillos con el medio apenas sombreado. */
-.camara-franja {
+/* Aviso mientras busca el canal o aprende el canal vacío: abajo, sobre la imagen. */
+.camara-preparando {
   position: absolute;
-  left: 0;
-  right: 0;
-  border-top: 3px dashed #ffd400;
-  border-bottom: 3px dashed #ffd400;
-  background: rgb(255 212 0 / 0.12);
+  left: 8px;
+  right: 8px;
+  bottom: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 12px;
+  background: rgb(15 42 48 / 0.82);
+  color: var(--blanco);
+  font-weight: 700;
+  font-size: clamp(0.95rem, min(2.4dvh, 4.2vw), 1.15rem);
+  text-align: center;
   pointer-events: none;
 }
 
-.camara-franja-vertical {
-  top: 0;
-  bottom: 0;
-  right: auto;
-  border: none;
-  border-left: 3px dashed #ffd400;
-  border-right: 3px dashed #ffd400;
+.camara-preparando svg {
+  flex: none;
+  font-size: 1.3em;
 }
 
 /* Mensaje sobre la cámara cuando no está lista; el texto blanco va sobre fondo oscuro. */

@@ -63,3 +63,40 @@ describe("manejador del worker", () => {
     expect(manejar({ tipo: "cuadro", ancho: 40, alto: 60, rgba: cuadroRgba([], 40, 60) })).toMatchObject({ tipo: "error" });
   });
 });
+
+describe("manejador: canal, perfil y fondo", () => {
+  /** Cuadro RGBA de 80 × 120 con mesa oscura alrededor y el canal iluminado al medio. */
+  function cuadroCanal(): ArrayBuffer {
+    const datos = new Uint8ClampedArray(80 * 120 * 4);
+    for (let y = 0; y < 120; y++) {
+      for (let x = 0; x < 80; x++) {
+        const v = x >= 10 && x < 70 && y >= 10 && y < 110 ? 230 : 50;
+        datos.set([v, v, v, 255], (y * 80 + x) * 4);
+      }
+    }
+    return datos.buffer;
+  }
+
+  it("con varios cuadros completos encuentra el canal (la zona iluminada)", () => {
+    const manejar = crearManejador();
+    expect(manejar({ tipo: "canal", ancho: 80, alto: 120, rgba: cuadroCanal(), ultimo: false })).toBeNull();
+    const r = manejar({ tipo: "canal", ancho: 80, alto: 120, rgba: cuadroCanal(), ultimo: true });
+    expect(r).toMatchObject({ tipo: "canal", ancho: 80, alto: 120, analisis: { fuente: "luz", zona: { x: 10, y: 10, ancho: 60, alto: 100 } } });
+  });
+
+  it("con fondo, primero aprende el canal vacío y lo avisa", () => {
+    const manejar = crearManejador();
+    manejar({ tipo: "configurar", controles, ancho: 80, alto: 120, perfil: null, fondo: true });
+    const r = manejar({ tipo: "cuadro", ancho: 80, alto: 120, rgba: cuadroRgba([]) });
+    expect(r).toMatchObject({ tipo: "resultado", fondo: { estado: "aprendiendo" }, franja: { inicio: expect.any(Number) } });
+  });
+
+  it("reiniciarFondo vuelve a mirar el canal vacío", () => {
+    const manejar = crearManejador();
+    manejar({ tipo: "configurar", controles, ancho: 80, alto: 120, fondo: true });
+    for (let i = 0; i < 95; i++) manejar({ tipo: "cuadro", ancho: 80, alto: 120, rgba: cuadroRgba([]) });
+    expect(manejar({ tipo: "cuadro", ancho: 80, alto: 120, rgba: cuadroRgba([]) })).toMatchObject({ fondo: { estado: "listo" } });
+    manejar({ tipo: "reiniciarFondo" });
+    expect(manejar({ tipo: "cuadro", ancho: 80, alto: 120, rgba: cuadroRgba([]) })).toMatchObject({ fondo: { estado: "aprendiendo" } });
+  });
+});

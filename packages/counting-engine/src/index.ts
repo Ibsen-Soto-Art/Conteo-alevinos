@@ -9,3 +9,4 @@ export * from "./morfologia";
 export * from "./manchas";
 export * from "./forma";
 export * from "./franja";
+export * from "./canal";

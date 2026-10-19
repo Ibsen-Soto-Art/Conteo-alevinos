@@ -1,4 +1,5 @@
-import { useEffect, useRef } from "react";
+import { perfilPorId } from "@contador/domain";
+import { useEffect, useMemo, useRef } from "react";
 import { useMotorCompartido } from "../../app/MotorContexto";
 import { navegar } from "../../app/rutas";
 import { AVISO_FALTAN, enBolsa as alevinosEnBolsa, numeroBolsaAbierta, totalHoy } from "../../app/sesion";
@@ -19,7 +20,14 @@ export function Contando() {
   const { meta, pausado } = estado;
   // Lo que se muestra y se compara con la meta ya va corregido con el factor de la prueba de 100.
   const enBolsa = alevinosEnBolsa(estado);
-  const vivo = useConteoEnVivo({ activo: true, onSumados: (n) => despachar({ tipo: "sumar", cantidad: n }) });
+  // Se cuenta con el perfil del lote (especie y tamaño) y lo que midió su Prueba de 100.
+  const perfil = useMemo(() => (estado.lote?.perfilId ? (perfilPorId(estado.lote.perfilId) ?? null) : null), [estado.lote?.perfilId]);
+  const vivo = useConteoEnVivo({
+    activo: true,
+    onSumados: (n) => despachar({ tipo: "sumar", cantidad: n }),
+    perfil,
+    lote: estado.lote?.estadisticas ?? null,
+  });
   useWakeLock(true);
 
   const faltan = meta === null ? null : Math.max(0, meta - enBolsa);
@@ -46,6 +54,8 @@ export function Contando() {
           videoRef={vivo.videoRef}
           estado={vivo.estado}
           ajustes={vivo.ajustes}
+          geometria={vivo.geometria}
+          preparacion={vivo.preparacion}
           onReintentar={vivo.reintentar}
         >
           <AvisoLuz luz={vivo.luz} className="camara-luz" />

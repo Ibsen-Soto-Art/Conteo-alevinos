@@ -240,3 +240,26 @@ html.modo-laboratorio body {
   margin: 0;
   background: #06121c;
 }
+
+.laboratorio .ficha {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 4px 12px;
+  margin: 0;
+}
+
+.laboratorio .ficha dt {
+  font-weight: 700;
+  color: var(--texto);
+}
+
+.laboratorio .ficha dd {
+  margin: 0;
+}
+
+.laboratorio .selector-perfil {
+  min-height: 48px;
+  font: inherit;
+  padding: 0 8px;
+  border-radius: 8px;
+}

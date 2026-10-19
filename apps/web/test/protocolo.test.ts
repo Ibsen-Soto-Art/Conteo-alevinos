@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CONTROLES_INICIALES, configuracionMotor, lineaEnVista, posicionLineaPx, puntoEnVista, tamanoProceso } from "../src/features/conteo/protocolo";
+import { CONTROLES_INICIALES, configuracionMotor, lineaEnVista, posicionLineaPx, posicionParaVerFranja, puntoEnVista, tamanoProceso } from "../src/features/conteo/protocolo";
 
 describe("tamanoProceso", () => {
   it("reduce un video horizontal a 320 px de lado mayor", () => {
@@ -73,5 +73,20 @@ describe("puntoEnVista", () => {
     const vista = { ancho: 360, alto: 300 };
     const linea = lineaEnVista(60, "abajo", { ancho: 720, alto: 1280 }, vista);
     expect(puntoEnVista(90, 0.6 * 320, proceso, vista).y).toBeCloseTo(linea, 6);
+  });
+});
+
+describe("mostrar la franja en la vista", () => {
+  it("con object-position, el punto que se ve en la vista es el que se pidió", () => {
+    // Video vertical 360×640 en una franja de 360×260: con posición 75 % se ve la parte baja.
+    const p = puntoEnVista(180, 480, { ancho: 360, alto: 640 }, { ancho: 360, alto: 260 }, { x: 0.5, y: 0.75 });
+    expect(p.y).toBeCloseTo(0.75 * 260, 6);
+  });
+
+  it("la posición pone la franja (75 % del canal hacia abajo) a la vista", () => {
+    const pos = posicionParaVerFranja({ x: 0, y: 0, ancho: 360, alto: 640 }, { ancho: 360, alto: 640 }, { lineaPorcentaje: 75, sentido: "abajo" });
+    expect(pos).toEqual({ x: 0.5, y: 0.75 });
+    const derecha = posicionParaVerFranja({ x: 100, y: 0, ancho: 200, alto: 360 }, { ancho: 640, alto: 360 }, { lineaPorcentaje: 50, sentido: "derecha" });
+    expect(derecha).toEqual({ x: 200 / 640, y: 0.5 });
   });
 });

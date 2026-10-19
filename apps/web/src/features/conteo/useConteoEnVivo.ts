@@ -1,39 +1,69 @@
-import { hayPocaLuz } from "@contador/counting-engine";
+import { hayPocaLuz, type EstadisticasLote, type EstadoFondo, type PerfilForma } from "@contador/counting-engine";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useMotorCompartido } from "../../app/MotorContexto";
 import { leerAjustes } from "./ajustes";
-import { LADO_PROCESO, tamanoProceso } from "./protocolo";
+import { Captura, bucleDeCuadros, type Geometria } from "./captura";
 
 export type EstadoCamara = "iniciando" | "lista" | "sin-permiso" | "inseguro" | "error";
 export type Luz = "bien" | "poca" | null;
+
+/** Qué está haciendo la app antes de poder contar. */
+export type Preparacion = "buscando-canal" | EstadoFondo;
 
 /** Cuánto pesa cada cuadro nuevo en el promedio del brillo (evita que el aviso parpadee). */
 const SUAVIZADO_BRILLO = 0.1;
 
 /**
- * Abre la cámara trasera y le pasa cada cuadro nuevo al motor. Avisa cuántos alevinos
- * cruzaron la línea en cada cuadro (`onSumados`) y si hay poca luz. No guarda video.
+ * Abre la cámara trasera y le pasa los cuadros al motor: primero busca el canal y sus marcas,
+ * después aprende el canal vacío y cuenta con el perfil de la especie. Avisa cuántos alevinos
+ * cruzaron la franja en cada cuadro (`onSumados`) y si hay poca luz. No guarda video.
  */
-export function useConteoEnVivo({ activo, onSumados }: { activo: boolean; onSumados: (n: number) => void }) {
+export function useConteoEnVivo({
+  activo,
+  onSumados,
+  perfil,
+  lote = null,
+}: {
+  activo: boolean;
+  onSumados: (n: number) => void;
+  perfil: PerfilForma | null;
+  lote?: EstadisticasLote | null;
+}) {
   const motor = useMotorCompartido();
   const ajustes = useMemo(() => leerAjustes(), []);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const captura = useRef<Captura | null>(null);
   const [estado, setEstado] = useState<EstadoCamara>("iniciando");
   const [luz, setLuz] = useState<Luz>(null);
+  const [geometria, setGeometria] = useState<Geometria | null>(null);
+  const [preparacion, setPreparacion] = useState<{ estado: Preparacion; progreso: number }>({ estado: "buscando-canal", progreso: 0 });
   const [intento, setIntento] = useState(0);
   const alSumar = useRef(onSumados);
   alSumar.current = onSumados;
+  const perfilRef = useRef(perfil);
+  perfilRef.current = perfil;
+  const loteRef = useRef(lote);
+  loteRef.current = lote;
 
-  // Resultados del motor: sumar lo que cruzó y vigilar la luz.
+  // Respuestas del motor: el canal encontrado, lo que cruzó, la luz y cómo va el fondo.
   useEffect(() => {
     let brillo: number | null = null;
     return motor.escuchar((r) => {
+      captura.current?.recibir(r);
       if (r.tipo !== "resultado") return;
       if (r.sumados > 0) alSumar.current(r.sumados);
       brillo = brillo === null ? r.brillo : brillo + (r.brillo - brillo) * SUAVIZADO_BRILLO;
       setLuz(hayPocaLuz(brillo) ? "poca" : "bien");
+      const f = r.fondo ?? { estado: "listo" as const, progreso: 1 };
+      // Solo cambia el estado cuando cambia algo que se ve (el progreso en pasos de 10 %).
+      setPreparacion((p) => (p.estado === f.estado && Math.round(p.progreso * 10) === Math.round(f.progreso * 10) ? p : f));
     });
   }, [motor]);
+
+  // El perfil o el lote pueden cambiar sin volver a buscar el canal.
+  useEffect(() => {
+    captura.current?.cambiar({ perfil, lote });
+  }, [perfil, lote]);
 
   // Cámara trasera.
   useEffect(() => {
@@ -73,57 +103,26 @@ export function useConteoEnVivo({ activo, onSumados }: { activo: boolean; onSuma
     };
   }, [activo, intento]);
 
-  // Bucle: cada cuadro nuevo se reduce a 320 px y va al motor (solo uno en camino a la vez).
+  // Cada cuadro nuevo va a la captura: primero el canal, luego el recorte para contar.
   useEffect(() => {
     const video = videoRef.current;
     if (!activo || estado !== "lista" || !video) return;
-    const lienzo = document.createElement("canvas");
-    const ctx = lienzo.getContext("2d", { willReadFrequently: true })!;
-    let tamano = { ancho: 0, alto: 0 };
-    let vivo = true;
-    let ultimoTiempo = -1;
-    // En navegadores viejos no existe aunque TypeScript diga que sí.
-    const conAviso = typeof video.requestVideoFrameCallback === "function";
-    let id = 0;
-
-    const procesar = () => {
-      if (!vivo || video.readyState < 2 || video.videoWidth === 0) return;
-      const t = tamanoProceso(video.videoWidth, video.videoHeight, LADO_PROCESO);
-      if (t.ancho !== tamano.ancho || t.alto !== tamano.alto) {
-        tamano = t;
-        lienzo.width = t.ancho;
-        lienzo.height = t.alto;
-        motor.enviar({ tipo: "configurar", controles: ajustes, ...t });
-      }
-      if (!motor.libre()) return;
-      ctx.drawImage(video, 0, 0, t.ancho, t.alto);
-      motor.enviarCuadro(t.ancho, t.alto, ctx.getImageData(0, 0, t.ancho, t.alto).data.buffer);
-    };
-
-    const siguiente = () => {
-      if (!vivo) return;
-      if (conAviso) {
-        id = video.requestVideoFrameCallback(() => {
-          procesar();
-          siguiente();
-        });
-      } else {
-        id = requestAnimationFrame(() => {
-          if (video.currentTime !== ultimoTiempo) {
-            ultimoTiempo = video.currentTime;
-            procesar();
-          }
-          siguiente();
-        });
-      }
-    };
-    siguiente();
+    setGeometria(null);
+    setPreparacion({ estado: "buscando-canal", progreso: 0 });
+    const c = new Captura(video, motor, {
+      ajustes,
+      perfil: perfilRef.current,
+      lote: loteRef.current,
+      fondo: true,
+      alGeometria: setGeometria,
+    });
+    captura.current = c;
+    const parar = bucleDeCuadros(video, () => c.cuadro());
     return () => {
-      vivo = false;
-      if (conAviso) video.cancelVideoFrameCallback(id);
-      else cancelAnimationFrame(id);
+      parar();
+      captura.current = null;
     };
   }, [activo, estado, motor, ajustes]);
 
-  return { videoRef, estado, luz, ajustes, reintentar: () => setIntento((i) => i + 1) };
+  return { videoRef, estado, luz, ajustes, geometria, preparacion, reintentar: () => setIntento((i) => i + 1) };
 }

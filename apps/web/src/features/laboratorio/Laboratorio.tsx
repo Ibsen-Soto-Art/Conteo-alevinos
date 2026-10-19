@@ -1,33 +1,57 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { PERFILES, perfilPorId } from "@contador/domain";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import "./laboratorio.css";
-import { dibujarEscena, pintarMascara } from "../conteo/dibujo";
-import { PanelControles } from "./PanelControles";
 import { guardarAjustes, leerAjustes } from "../conteo/ajustes";
-import { LADO_PROCESO, tamanoProceso, type Controles, type MensajeDelMotor } from "../conteo/protocolo";
+import { Captura, bucleDeCuadros, type Geometria } from "../conteo/captura";
+import { dibujarEscena, pintarMascara } from "../conteo/dibujo";
+import { type Controles, type MensajeDelMotor } from "../conteo/protocolo";
 import { useMotor } from "../conteo/useMotor";
+import { PanelControles } from "./PanelControles";
 
 type Resultado = Extract<MensajeDelMotor, { tipo: "resultado" }>;
 type Fuente = "ninguna" | "video" | "camara";
 
-/** El lienzo visible se dibuja al doble del cuadro procesado para que se vea nítido. */
+/** El lienzo visible se dibuja al doble del recorte para que se vea nítido. */
 const ESCALA_DIBUJO = 2;
 const VELOCIDADES = [1, 0.5, 0.25];
+const SIN_PERFIL = "ninguno";
+
+const NOMBRE_FUENTE: Record<Geometria["canal"]["fuente"], string> = {
+  marcas: "las 4 marcas",
+  luz: "la zona iluminada (sin las 4 marcas)",
+  todo: "el cuadro entero (no se ve el borde del canal)",
+};
+
+const NOMBRE_FONDO: Record<string, string> = {
+  aprendiendo: "aprendiendo el canal vacío",
+  esperando: "esperando: hay movimiento",
+  listo: "aprendido",
+  "sin-fondo": "sin fondo (nunca hubo canal quieto): umbral fijo",
+};
 
 export function Laboratorio() {
   const [controles, setControles] = useState<Controles>(leerAjustes);
+  const [perfilId, setPerfilId] = useState("otra-mediano");
+  const [usarFondo, setUsarFondo] = useState(true);
   const [fuente, setFuente] = useState<Fuente>("ninguna");
   const [total, setTotal] = useState(0);
   const [pausado, setPausado] = useState(false);
   const [velocidad, setVelocidad] = useState(1);
   const [verMascara, setVerMascara] = useState(false);
-  const [estado, setEstado] = useState({ cps: 0, ms: 0, areaTipica: null as number | null });
+  const [geometria, setGeometria] = useState<Geometria | null>(null);
+  const [estado, setEstado] = useState({
+    cps: 0,
+    ms: 0,
+    areaTipica: null as number | null,
+    fondo: null as Resultado["fondo"],
+    origen: null as Resultado["origenTamano"],
+  });
   const [error, setError] = useState<string | null>(null);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const lienzoRef = useRef<HTMLCanvasElement>(null);
-  const proceso = useRef<HTMLCanvasElement | null>(null);
   const mascara = useRef<HTMLCanvasElement | null>(null);
-  const tamano = useRef({ ancho: 0, alto: 0 });
+  const captura = useRef<Captura | null>(null);
   const resultado = useRef<Resultado | null>(null);
   const controlesRef = useRef(controles);
   const verMascaraRef = useRef(verMascara);
@@ -35,99 +59,105 @@ export function Laboratorio() {
   const contadorCps = useRef({ desde: 0, cuadros: 0 });
   controlesRef.current = controles;
   verMascaraRef.current = verMascara;
+  const perfil = useMemo(() => (perfilId === SIN_PERFIL ? null : (perfilPorId(perfilId) ?? null)), [perfilId]);
 
   const alResponder = useCallback((r: MensajeDelMotor) => {
+    captura.current?.recibir(r);
     if (r.tipo === "error") {
       setError(r.mensaje);
       return;
     }
+    if (r.tipo !== "resultado") return;
     resultado.current = r;
     setTotal(r.total);
     const c = contadorCps.current;
     c.cuadros++;
     const ahora = performance.now();
     if (ahora - c.desde >= 1000) {
-      setEstado({ cps: Math.round((c.cuadros * 1000) / (ahora - c.desde)), ms: r.ms, areaTipica: r.areaTipica });
+      setEstado({
+        cps: Math.round((c.cuadros * 1000) / (ahora - c.desde)),
+        ms: r.ms,
+        areaTipica: r.areaTipica,
+        fondo: r.fondo,
+        origen: r.origenTamano,
+      });
       contadorCps.current = { desde: ahora, cuadros: 0 };
     }
   }, []);
 
   const motor = useMotor(alResponder);
 
-  // Cada cambio de controles va al motor sin reiniciar el conteo, y queda guardado
-  // en este teléfono para que la app cuente con los mismos ajustes.
+  // Los ajustes quedan guardados en este teléfono para que la app cuente con los mismos.
   useEffect(() => {
     guardarAjustes(controles);
-    const { ancho, alto } = tamano.current;
-    if (ancho > 0) motor.enviar({ tipo: "configurar", controles, ancho, alto });
-  }, [controles, motor]);
+    captura.current?.cambiar({ ajustes: controles });
+  }, [controles]);
 
-  // Bucle: cada cuadro nuevo del video se reduce, se envía al motor y se dibuja con lo detectado.
+  useEffect(() => {
+    captura.current?.cambiar({ perfil, fondo: usarFondo });
+  }, [perfil, usarFondo]);
+
+  // Cada fuente nueva (video o cámara): se busca el canal y se cuenta con el recorte.
+  useEffect(() => {
+    const video = videoRef.current;
+    if (fuente === "ninguna" || !video) return;
+    mascara.current ??= document.createElement("canvas");
+    const ctxMascara = mascara.current.getContext("2d")!;
+    setGeometria(null);
+    resultado.current = null;
+    const c = new Captura(video, motor, {
+      ajustes: controlesRef.current,
+      perfil,
+      lote: null,
+      fondo: usarFondo,
+      alGeometria: setGeometria,
+      alRecorte: (img) => {
+        if (!verMascaraRef.current) return;
+        mascara.current!.width = img.width;
+        mascara.current!.height = img.height;
+        const capa = ctxMascara.createImageData(img.width, img.height);
+        pintarMascara(img.data, controlesRef.current.umbral, capa.data);
+        ctxMascara.putImageData(capa, 0, 0);
+      },
+    });
+    captura.current = c;
+    const parar = bucleDeCuadros(video, () => c.cuadro());
+    return () => {
+      parar();
+      captura.current = null;
+    };
+    // El perfil y el fondo se cambian aparte (sin volver a buscar el canal).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fuente, motor]);
+
+  // Dibujo: el recorte del canal con lo que ve el motor encima.
   useEffect(() => {
     if (fuente === "ninguna") return;
-    proceso.current ??= document.createElement("canvas");
-    mascara.current ??= document.createElement("canvas");
-    const ctxProceso = proceso.current.getContext("2d", { willReadFrequently: true })!;
-    const ctxMascara = mascara.current.getContext("2d")!;
-    let ultimoTiempo = -1;
     let id = 0;
-    // requestVideoFrameCallback avisa de cada cuadro nuevo; sin él se compara currentTime.
-    const video = videoRef.current;
-    const conAviso = !!video && "requestVideoFrameCallback" in video;
-    let cuadroNuevo = false;
-    let idAviso = 0;
-    const avisar = () => {
-      cuadroNuevo = true;
-      idAviso = video!.requestVideoFrameCallback(avisar);
-    };
-    if (conAviso) idAviso = video.requestVideoFrameCallback(avisar);
-
     const paso = () => {
       id = requestAnimationFrame(paso);
       const video = videoRef.current;
       const lienzo = lienzoRef.current;
       if (!video || !lienzo || video.readyState < 2 || video.videoWidth === 0) return;
-
-      const t = tamanoProceso(video.videoWidth, video.videoHeight, LADO_PROCESO);
-      if (t.ancho !== tamano.current.ancho || t.alto !== tamano.current.alto) {
-        tamano.current = t;
-        proceso.current!.width = mascara.current!.width = t.ancho;
-        proceso.current!.height = mascara.current!.height = t.alto;
-        lienzo.width = t.ancho * ESCALA_DIBUJO;
-        lienzo.height = t.alto * ESCALA_DIBUJO;
-        resultado.current = null;
-        motor.enviar({ tipo: "configurar", controles: controlesRef.current, ...t });
+      const g = captura.current?.geometria ?? null;
+      const proceso = g?.recorte ?? { ancho: Math.round(video.videoWidth / 4), alto: Math.round(video.videoHeight / 4) };
+      if (lienzo.width !== proceso.ancho * ESCALA_DIBUJO || lienzo.height !== proceso.alto * ESCALA_DIBUJO) {
+        lienzo.width = proceso.ancho * ESCALA_DIBUJO;
+        lienzo.height = proceso.alto * ESCALA_DIBUJO;
       }
-
-      const hayCuadroNuevo = conAviso ? cuadroNuevo : video.currentTime !== ultimoTiempo;
-      if (hayCuadroNuevo && motor.libre()) {
-        cuadroNuevo = false;
-        ultimoTiempo = video.currentTime;
-        ctxProceso.drawImage(video, 0, 0, t.ancho, t.alto);
-        const img = ctxProceso.getImageData(0, 0, t.ancho, t.alto);
-        if (verMascaraRef.current) {
-          const capa = ctxMascara.createImageData(t.ancho, t.alto);
-          pintarMascara(img.data, controlesRef.current.umbral, capa.data);
-          ctxMascara.putImageData(capa, 0, 0);
-        }
-        motor.enviarCuadro(t.ancho, t.alto, img.data.buffer);
-      }
-
       dibujarEscena(
         lienzo.getContext("2d")!,
         video,
-        verMascaraRef.current ? mascara.current : null,
-        resultado.current,
+        g?.canal.zona ?? null,
+        verMascaraRef.current && g ? mascara.current : null,
+        g ? resultado.current : null,
         controlesRef.current,
-        tamano.current,
+        proceso,
       );
     };
     id = requestAnimationFrame(paso);
-    return () => {
-      cancelAnimationFrame(id);
-      if (conAviso) video.cancelVideoFrameCallback(idAviso);
-    };
-  }, [fuente, motor]);
+    return () => cancelAnimationFrame(id);
+  }, [fuente]);
 
   // La pantalla no se apaga mientras la cámara está encendida.
   useEffect(() => {
@@ -153,6 +183,15 @@ export function Laboratorio() {
     setTotal(0);
   }
 
+  /** Fuente nueva: se vuelve a mirar desde cero (canal, fondo y conteo). */
+  function empezarFuente(nueva: Fuente) {
+    contadorACero();
+    setFuente("ninguna");
+    // un cuadro después, para que el efecto arranque una captura nueva aunque la fuente sea la misma
+    requestAnimationFrame(() => setFuente(nueva));
+    setPausado(false);
+  }
+
   async function cargarVideo(archivo: File) {
     const video = videoRef.current;
     if (!video) return;
@@ -161,9 +200,7 @@ export function Laboratorio() {
     urlVideo.current = URL.createObjectURL(archivo);
     video.src = urlVideo.current;
     video.playbackRate = velocidad;
-    contadorACero();
-    setFuente("video");
-    setPausado(false);
+    empezarFuente("video");
     await video.play().catch((e) => setError(`No se pudo reproducir el video: ${e}`));
   }
 
@@ -183,9 +220,7 @@ export function Laboratorio() {
       apagarFuente();
       video.removeAttribute("src");
       video.srcObject = stream;
-      contadorACero();
-      setFuente("camara");
-      setPausado(false);
+      empezarFuente("camara");
       await video.play();
     } catch (e) {
       setError(`No se pudo abrir la cámara: ${e instanceof Error ? e.message : String(e)}`);
@@ -204,15 +239,16 @@ export function Laboratorio() {
     const video = videoRef.current;
     if (!video) return;
     video.currentTime = 0;
-    contadorACero();
+    empezarFuente(fuente);
     void video.play();
-    setPausado(false);
   }
 
   function cambiarVelocidad(v: number) {
     setVelocidad(v);
     if (videoRef.current) videoRef.current.playbackRate = v;
   }
+
+  const canal = geometria?.canal;
 
   return (
     <main className="laboratorio pagina">
@@ -286,19 +322,64 @@ export function Laboratorio() {
               )}
               <label className="interruptor">
                 <input type="checkbox" checked={verMascara} onChange={(e) => setVerMascara(e.target.checked)} />
-                Ver lo que detecta
+                Ver lo que es oscuro
               </label>
             </div>
           )}
 
-          <p className="estado">
-            {estado.cps} cuadros/s · motor {estado.ms.toFixed(1)} ms · área típica{" "}
-            {estado.areaTipica === null ? "aprendiendo…" : `${Math.round(estado.areaTipica)} px`} · cuadro{" "}
-            {tamano.current.ancho}×{tamano.current.alto}
-          </p>
+          <dl className="estado ficha">
+            <dt>Canal</dt>
+            <dd>
+              {canal
+                ? `encontrado con ${NOMBRE_FUENTE[canal.fuente]} · marcas ${canal.marcas.length}/4 · recorte ${geometria!.recorte.ancho}×${geometria!.recorte.alto}`
+                : fuente === "ninguna"
+                  ? "—"
+                  : "buscando…"}
+            </dd>
+            <dt>Escala</dt>
+            <dd>{geometria?.pxPorCmRecorte ? `${geometria.pxPorCmRecorte.toFixed(1)} px por cm en el recorte` : "sin marcas: no se sabe"}</dd>
+            <dt>Fondo</dt>
+            <dd>{estado.fondo ? `${NOMBRE_FONDO[estado.fondo.estado]} (${Math.round(estado.fondo.progreso * 100)} %)` : "apagado"}</dd>
+            <dt>Tamaño del alevino</dt>
+            <dd>
+              {estado.origen === "lote"
+                ? "medido en el lote"
+                : estado.origen === "escala"
+                  ? "del perfil, con la escala de las marcas"
+                  : estado.origen === "amplio"
+                    ? "aprendiendo (perfil amplio)"
+                    : "sin perfil"}
+              {estado.areaTipica !== null && ` · área típica ${Math.round(estado.areaTipica)} px`}
+            </dd>
+            <dt>Velocidad</dt>
+            <dd>
+              {estado.cps} cuadros/s · motor {estado.ms.toFixed(1)} ms
+            </dd>
+          </dl>
         </section>
 
         <aside className="lateral">
+          <fieldset className="panel">
+            <legend>Pez y canal</legend>
+            <label className="campo">
+              <span className="etiqueta">Perfil de especie y tamaño</span>
+              <select className="selector-perfil" value={perfilId} onChange={(e) => setPerfilId(e.target.value)}>
+                <option value={SIN_PERFIL}>Sin perfil (contar toda mancha, como antes)</option>
+                {PERFILES.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.nombre}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="interruptor">
+              <input type="checkbox" checked={usarFondo} onChange={(e) => setUsarFondo(e.target.checked)} />
+              Aprender el canal vacío (fondo)
+            </label>
+            <button type="button" className="boton" disabled={fuente === "ninguna"} onClick={() => empezarFuente(fuente)}>
+              Buscar el canal de nuevo
+            </button>
+          </fieldset>
           <PanelControles controles={controles} onCambio={setControles} />
           <button type="button" className="boton" onClick={() => motor.enviar({ tipo: "olvidarArea" })}>
             Volver a aprender el tamaño del alevino

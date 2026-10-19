@@ -1,3 +1,4 @@
+import type { Zona } from "@contador/counting-engine";
 import { flujoVertical, franjaPorcentaje, posicionLineaPx, type Controles, type MensajeDelMotor } from "./protocolo";
 
 type Resultado = Extract<MensajeDelMotor, { tipo: "resultado" }>;
@@ -22,10 +23,14 @@ export function pintarMascara(rgba: Uint8ClampedArray, umbral: number, destino: 
   }
 }
 
-/** Dibuja el video, la máscara, la línea de conteo, las manchas y las pistas. */
+/**
+ * Dibuja el recorte del canal (la zona del video que ve el motor), la máscara, la franja de
+ * conteo, las manchas y las pistas. Sin recorte, el video entero.
+ */
 export function dibujarEscena(
   ctx: CanvasRenderingContext2D,
-  video: CanvasImageSource,
+  video: HTMLVideoElement,
+  recorte: Zona | null,
   mascara: CanvasImageSource | null,
   resultado: Resultado | null,
   controles: Controles,
@@ -34,7 +39,8 @@ export function dibujarEscena(
   const { width: W, height: H } = ctx.canvas;
   const k = W / proceso.ancho;
 
-  ctx.drawImage(video, 0, 0, W, H);
+  if (recorte) ctx.drawImage(video, recorte.x, recorte.y, recorte.ancho, recorte.alto, 0, 0, W, H);
+  else ctx.drawImage(video, 0, 0, W, H);
   if (mascara) ctx.drawImage(mascara, 0, 0, W, H);
 
   // franja de conteo: banda sombreada con sus dos bordes
