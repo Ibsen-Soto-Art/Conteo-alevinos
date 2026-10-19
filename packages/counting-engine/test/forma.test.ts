@@ -159,34 +159,25 @@ describe("fondo aprendido", () => {
   const conPez = (y: number) =>
     cuadroConFiguras([{ tipo: "rect", x: 10, y: 10, ancho: 8, alto: 8 }, { tipo: "elipse", cx: 80, cy: y, largo: 30, ancho: 6, angulo: 90 }]);
 
-  it("aprende el canal vacío en los cuadros pedidos", () => {
+  it("aprende el canal en los cuadros pedidos", () => {
     const f = new ModeloFondo({ cuadrosParaAprender: 5 });
-    for (let i = 0; i < 5; i++) expect(f.aprender(vacio())).toBe(false);
+    for (let i = 0; i < 4; i++) expect(f.aprender(vacio())).toBe(false);
     expect(f.estado).toBe("aprendiendo");
     expect(f.progreso).toBeCloseTo(0.8);
     expect(f.aprender(vacio())).toBe(true);
     expect(f.estado).toBe("listo");
   });
 
-  it("si pasan alevinos mientras aprende, espera y vuelve a empezar", () => {
-    const f = new ModeloFondo({ cuadrosParaAprender: 5 });
-    f.aprender(vacio());
-    f.aprender(vacio());
-    f.aprender(conPez(50));
-    expect(f.estado).toBe("esperando");
-    f.aprender(conPez(80));
-    expect(f.estado).toBe("esperando");
-    for (let i = 0; i < 4; i++) f.aprender(vacio());
-    expect(f.listo).toBe(false); // lo de antes no vale: necesita 5 cuadros quietos seguidos
-    f.aprender(vacio());
-    f.aprender(vacio());
+  it("aprende aunque pasen alevinos: lo que pasa no queda en el fondo, la marca fija sí", () => {
+    const f = new ModeloFondo({ cuadrosParaAprender: 30 });
+    // Desde el primer cuadro pasa un alevino, y otro más tarde.
+    for (let i = 0; i < 30; i++) f.aprender(i < 15 ? conPez(20 + i * 12) : conPez(-50 + (i - 15) * 12));
     expect(f.listo).toBe(true);
-  });
-
-  it("si nunca hay canal quieto, sigue sin fondo (con el umbral fijo)", () => {
-    const f = new ModeloFondo({ cuadrosParaAprender: 5, cuadrosMaximosEspera: 10 });
-    for (let i = 0; i < 10; i++) f.aprender(conPez(20 + i * 15));
-    expect(f.estado).toBe("sin-fondo");
+    const c = vacio();
+    const mascara = new Uint8Array(c.ancho * c.alto);
+    f.primerPlano(c, mascara);
+    // Con el canal vacío no aparece nada: ni el rastro de los alevinos ni la marca.
+    expect(mascara.reduce((s, v) => s + v, 0)).toBe(0);
   });
 
   it("con el fondo listo ignora las marcas fijas y ve lo nuevo", () => {
@@ -230,11 +221,21 @@ describe("motor con perfil y fondo", () => {
   const marca: Figura = { tipo: "rect", x: 4, y: 4, ancho: 10, alto: 10 };
   const cuadro = (figuras: Figura[]): CuadroGris => cuadroConFiguras([marca, ...figuras]);
 
-  it("no cuenta mientras aprende el fondo, y avisa cómo va", () => {
-    const motor = new MotorConteo(config());
-    const r = motor.procesar(cuadro([]));
-    expect(r.fondo).toEqual({ estado: "aprendiendo", progreso: 0 });
-    expect(r.detecciones).toEqual([]);
+  it("cuenta desde el primer cuadro, mientras aprende el fondo", () => {
+    const motor = new MotorConteo({ ...config(), fondo: { cuadrosParaAprender: 90 } });
+    let r = motor.procesar(cuadro([]));
+    expect(r.fondo).toMatchObject({ estado: "aprendiendo" });
+    for (let y = 20; y < 220; y += 8) r = motor.procesar(cuadro([{ tipo: "elipse", cx: 60, cy: y, largo: 30, ancho: 6, angulo: 90 }]));
+    expect(r.fondo!.estado).toBe("aprendiendo");
+    expect(r.total).toBe(1);
+  });
+
+  it("no pierde ni repite el alevino que cruza justo cuando el fondo queda listo", () => {
+    const motor = new MotorConteo(config()); // aprende en 5 cuadros
+    let r = motor.procesar(cuadro([]));
+    for (let y = 60; y < 220; y += 8) r = motor.procesar(cuadro([{ tipo: "elipse", cx: 60, cy: y, largo: 30, ancho: 6, angulo: 90 }]));
+    expect(r.fondo!.estado).toBe("listo");
+    expect(r.total).toBe(1);
   });
 
   it("cuenta el alevino y no la burbuja que pasa a su lado; la marca fija nunca aparece", () => {

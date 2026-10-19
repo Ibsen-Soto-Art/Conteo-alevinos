@@ -4,7 +4,7 @@ import type { EstadoFlujo } from "@contador/counting-engine";
 import { IconoAviso, IconoChulo, IconoProblema, IconoSol } from "../../shared/ui/Iconos";
 import { recorteAVideo, type Geometria } from "./captura";
 import { flujoVertical, posicionParaVerFranja, puntoEnVista, type Controles, type MensajeDelMotor } from "./protocolo";
-import type { EstadoCamara, Luz, Preparacion } from "./useConteoEnVivo";
+import type { EstadoCamara, Luz } from "./useConteoEnVivo";
 
 const MENSAJES: Record<Exclude<EstadoCamara, "lista">, string> = {
   iniciando: "Abriendo la cámara…",
@@ -100,7 +100,6 @@ export function VistaCamara({
   estado,
   ajustes,
   geometria,
-  preparacion,
   onReintentar,
   className = "",
   children,
@@ -109,7 +108,6 @@ export function VistaCamara({
   estado: EstadoCamara;
   ajustes: Controles;
   geometria: Geometria | null;
-  preparacion: { estado: Preparacion; progreso: number };
   onReintentar: () => void;
   className?: string;
   children?: ReactNode;
@@ -141,8 +139,6 @@ export function VistaCamara({
     });
   }, [motor, estado, geometria, video, vista, ajustes.sentido, posicion.x, posicion.y]);
 
-  const preparando = preparacion.estado === "buscando-canal" || preparacion.estado === "aprendiendo" || preparacion.estado === "esperando";
-
   return (
     <div ref={caja} className={`camara ${className}`}>
       <video
@@ -154,19 +150,6 @@ export function VistaCamara({
         onLoadedMetadata={(e) => setVideo({ ancho: e.currentTarget.videoWidth, alto: e.currentTarget.videoHeight })}
       />
       {estado === "lista" && <canvas ref={marcas} className="camara-marcas" aria-hidden="true" />}
-      {estado === "lista" && preparando && (
-        <div className="camara-preparando" role="status">
-          {preparacion.estado === "esperando" ? (
-            <>
-              <IconoAviso /> Espere: hay movimiento en el canal
-            </>
-          ) : (
-            <>
-              <IconoSol /> Mirando el canal vacío: no eche alevinos · {Math.round(preparacion.progreso * 100)} %
-            </>
-          )}
-        </div>
-      )}
       {estado !== "lista" && (
         <div className="camara-mensaje" role={estado === "iniciando" ? "status" : "alert"}>
           {estado !== "iniciando" && <IconoProblema />}

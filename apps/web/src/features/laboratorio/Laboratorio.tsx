@@ -38,10 +38,8 @@ function cuadrosDeLaCamara(video: HTMLVideoElement | null): number | null {
 }
 
 const NOMBRE_FONDO: Record<string, string> = {
-  aprendiendo: "aprendiendo el canal vacío",
-  esperando: "esperando: hay movimiento",
+  aprendiendo: "aprendiendo (cuenta con el umbral fijo)",
   listo: "aprendido",
-  "sin-fondo": "sin fondo (nunca hubo canal quieto): umbral fijo",
 };
 
 export function Laboratorio() {

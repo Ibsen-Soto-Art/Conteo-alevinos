@@ -23,7 +23,7 @@ export interface ConfiguracionMotor {
    * mide y se descarta lo que no tiene forma de alevino; sin perfil, se cuenta toda mancha oscura.
    */
   perfil?: PerfilForma | null;
-  /** Aprender el canal vacío antes de contar. Sin esto se usa el umbral fijo del detector. */
+  /** Aprender el fondo del canal mientras cuenta (se cuenta con el umbral fijo hasta tenerlo). */
   fondo?: Partial<OpcionesFondo> | null;
   /** Píxeles por centímetro, si se encontraron las marcas del canal. */
   pxPorCm?: number | null;
@@ -96,11 +96,8 @@ export class MotorConteo {
     }
     this.largoEje = this.config.sentido === "abajo" || this.config.sentido === "arriba" ? cuadro.alto : cuadro.ancho;
 
-    // Mientras aprende el canal vacío no se cuenta nada.
-    if (this.fondo && !this.fondo.listo && this.fondo.estado !== "sin-fondo") {
-      this.fondo.aprender(cuadro);
-      return { total: this.total, sumadosEnEsteCuadro: 0, detecciones: [], descartadas: [], pistas: this.rastreador.activas, fondo: estadoFondo(), perfil: this.perfilPx(), flujo: null };
-    }
+    // Se cuenta desde el primer cuadro: mientras aprende el fondo, con el umbral fijo.
+    if (this.fondo && !this.fondo.listo) this.fondo.aprender(cuadro);
 
     const { detecciones, descartadas } = this.config.perfil || this.fondo ? this.detectar(cuadro) : this.detectarComoAntes(cuadro);
 

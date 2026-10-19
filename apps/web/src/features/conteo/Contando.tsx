@@ -55,7 +55,6 @@ export function Contando() {
           estado={vivo.estado}
           ajustes={vivo.ajustes}
           geometria={vivo.geometria}
-          preparacion={vivo.preparacion}
           onReintentar={vivo.reintentar}
         >
           <AvisoLuz luz={vivo.luz} className="camara-luz" />

@@ -1,4 +1,4 @@
-import { hayPocaLuz, type EstadisticasLote, type EstadoFlujo, type EstadoFondo, type PerfilForma } from "@contador/counting-engine";
+import { hayPocaLuz, type EstadisticasLote, type EstadoFlujo, type PerfilForma } from "@contador/counting-engine";
 import type { EstadisticasMedidas } from "@contador/domain";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useMotorCompartido } from "../../app/MotorContexto";
@@ -8,15 +8,12 @@ import { Captura, bucleDeCuadros, type Geometria } from "./captura";
 export type EstadoCamara = "iniciando" | "lista" | "sin-permiso" | "inseguro" | "error";
 export type Luz = "bien" | "poca" | null;
 
-/** Qué está haciendo la app antes de poder contar. */
-export type Preparacion = "buscando-canal" | EstadoFondo;
-
 /** Cuánto pesa cada cuadro nuevo en el promedio del brillo (evita que el aviso parpadee). */
 const SUAVIZADO_BRILLO = 0.1;
 
 /**
- * Abre la cámara trasera y le pasa los cuadros al motor: primero busca el canal y sus marcas,
- * después aprende el canal vacío y cuenta con el perfil de la especie. Avisa cuántos alevinos
+ * Abre la cámara trasera y le pasa los cuadros al motor: primero busca el canal y sus marcas
+ * (unos pocos cuadros) y enseguida cuenta con el perfil de la especie, mientras aprende el fondo. Avisa cuántos alevinos
  * cruzaron la franja en cada cuadro (`onSumados`) y si hay poca luz. No guarda video.
  */
 export function useConteoEnVivo({
@@ -40,7 +37,6 @@ export function useConteoEnVivo({
   /** Solo en ?demo: un aviso de flujo forzado por las pruebas, que gana sobre lo medido. */
   const flujoForzado = useRef<EstadoFlujo | null | undefined>(undefined);
   const [geometria, setGeometria] = useState<Geometria | null>(null);
-  const [preparacion, setPreparacion] = useState<{ estado: Preparacion; progreso: number }>({ estado: "buscando-canal", progreso: 0 });
   const [intento, setIntento] = useState(0);
   const alSumar = useRef(onSumados);
   alSumar.current = onSumados;
@@ -49,7 +45,7 @@ export function useConteoEnVivo({
   const loteRef = useRef(lote);
   loteRef.current = lote;
 
-  // Respuestas del motor: el canal encontrado, lo que cruzó, la luz y cómo va el fondo.
+  // Respuestas del motor: el canal encontrado, lo que cruzó y la luz.
   useEffect(() => {
     let brillo: number | null = null;
     return motor.escuchar((r) => {
@@ -59,9 +55,6 @@ export function useConteoEnVivo({
       brillo = brillo === null ? r.brillo : brillo + (r.brillo - brillo) * SUAVIZADO_BRILLO;
       setLuz(hayPocaLuz(brillo) ? "poca" : "bien");
       setFlujo(flujoForzado.current !== undefined ? flujoForzado.current : (r.flujo?.estado ?? null));
-      const f = r.fondo ?? { estado: "listo" as const, progreso: 1 };
-      // Solo cambia el estado cuando cambia algo que se ve (el progreso en pasos de 10 %).
-      setPreparacion((p) => (p.estado === f.estado && Math.round(p.progreso * 10) === Math.round(f.progreso * 10) ? p : f));
     });
   }, [motor]);
 
@@ -114,7 +107,6 @@ export function useConteoEnVivo({
     const video = videoRef.current;
     if (!activo || estado !== "lista" || !video) return;
     setGeometria(null);
-    setPreparacion({ estado: "buscando-canal", progreso: 0 });
     const c = new Captura(video, motor, {
       ajustes,
       perfil: perfilRef.current,
@@ -162,5 +154,5 @@ export function useConteoEnVivo({
     return () => window.removeEventListener("demo-flujo", forzar);
   }, []);
 
-  return { videoRef, estado, luz, flujo, ajustes, geometria, preparacion, pedirEstadisticas, reintentar: () => setIntento((i) => i + 1) };
+  return { videoRef, estado, luz, flujo, ajustes, geometria, pedirEstadisticas, reintentar: () => setIntento((i) => i + 1) };
 }

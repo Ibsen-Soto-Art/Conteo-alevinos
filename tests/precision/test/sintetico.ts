@@ -7,16 +7,16 @@ export type Objeto = "pez" | "burbuja" | "basura";
 
 /**
  * Genera con ffmpeg un video de prueba como el del canal (vertical, 360 × 640, 30 cuadros/s):
- * mesa oscura, canal iluminado con las 4 marcas de cinta de 2 × 2 cm en las esquinas, 4 s de
- * canal vacío y luego los `objetos` bajando uno cada 0,5 s, que cruzan la franja de conteo:
+ * mesa oscura, canal iluminado con las 4 marcas de cinta de 2 × 2 cm en las esquinas, unos segundos
+ * de canal vacío y luego los `objetos` bajando uno cada 0,5 s, que cruzan la franja de conteo:
  * - pez: elipse oscura de 4 × 0,7 cm (una cachama mediana vista desde arriba);
  * - burbuja: anillo oscuro con el centro claro;
  * - basura: una cruz (un pedazo de hoja o ramita).
+ * Con `vacio`: segundos de canal vacío al empezar (0 = alevinos desde el primer cuadro).
  * Con `acostado`, el video se guarda girado con la marca de rotación, como lo hacen los celulares.
  */
-export function videoSintetico(ruta: string, objetos: Objeto[] | number, { acostado = false } = {}) {
+export function videoSintetico(ruta: string, objetos: Objeto[] | number, { acostado = false, vacio = 4 } = {}) {
   const lista: Objeto[] = typeof objetos === "number" ? Array.from({ length: objetos }, () => "pez") : objetos;
-  const vacio = 4;
   const segundos = vacio + lista.length * 0.5 + 4.5;
   const marca = 2 * PX_POR_CM;
   const canal = { x: 40, y: 20, ancho: 280, alto: 600 };

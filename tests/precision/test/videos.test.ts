@@ -15,6 +15,7 @@ const vertical = join(carpeta, "20261020_tilapia_pequeno_001.mp4");
 const acostado = join(carpeta, "20261020_cachama_grande_001.mp4");
 const negativo = join(carpeta, "20261020_burbujas_001.mp4");
 const mezclado = join(carpeta, "20261020_cachama_mediano_001.mp4");
+const sinVacio = join(carpeta, "20261020_cachama_mediano_002.mp4");
 const cachama = perfilDe("cachama", "mediano");
 let segundosVertical = 0;
 
@@ -23,6 +24,7 @@ beforeAll(() => {
   videoSintetico(acostado, 8, { acostado: true });
   videoSintetico(negativo, ["burbuja", "basura", "burbuja", "basura", "burbuja", "basura"]);
   videoSintetico(mezclado, ["pez", "burbuja", "pez", "basura", "pez", "pez"]);
+  videoSintetico(sinVacio, 10, { vacio: 0 });
 }, 120_000);
 
 describe("videos de prueba", () => {
@@ -52,6 +54,10 @@ describe("videos de prueba", () => {
   it("un video con solo burbujas y basura cuenta 0, también con el perfil más amplio", async () => {
     expect((await contarVideo(negativo, CONTROLES_INICIALES, cachama)).crudo).toBe(0);
     expect((await contarVideo(negativo, CONTROLES_INICIALES, perfilDe("otra", "mediano"))).crudo).toBe(0);
+  }, 60_000);
+
+  it("cuenta exacto aunque los alevinos pasen desde el primer segundo (sin canal vacío)", async () => {
+    expect((await contarVideo(sinVacio, CONTROLES_INICIALES, cachama)).crudo).toBe(10);
   }, 60_000);
 
   it("entre burbujas y basura cuenta solo los alevinos", async () => {
