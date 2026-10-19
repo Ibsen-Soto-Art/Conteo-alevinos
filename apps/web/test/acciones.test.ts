@@ -1,4 +1,4 @@
-import type { Bolsa, Conteo, Lote } from "@contador/domain";
+import { VERSION_PERFILES, type Bolsa, type Conteo, type Lote } from "@contador/domain";
 import { describe, expect, it } from "vitest";
 import { crearAcciones, crearAlmacen } from "../src/app/acciones";
 import { enBolsa, estadoInicial, type EstadoSesion } from "../src/app/sesion";
@@ -34,6 +34,8 @@ describe("acciones", () => {
     expect(acciones.aceptarPrueba()).toBe(true);
     await esperarGuardado();
     expect(almacen.leer().lote?.calibracion?.factor).toBeCloseTo(100 / 97, 6);
+    // El lote guarda con qué perfil de especie y tamaño se cuenta, y su versión.
+    expect(almacen.leer().lote).toMatchObject({ perfilId: "cachama-pequeno", versionPerfiles: VERSION_PERFILES });
     expect(guardado.lotes).toHaveLength(1);
   });
 

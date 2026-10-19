@@ -7,6 +7,9 @@ export interface Lote {
   creadoEn: string;
   /** Pasadas de la prueba de 100 y el factor aceptado; null si no se ha calibrado. */
   calibracion: { pasadas: PasadaCalibracion[]; factor: number } | null;
+  /** Perfil de especie y tamaño con el que se cuenta (perfiles.ts) y su versión. */
+  perfilId?: string;
+  versionPerfiles?: string;
 }
 
 export interface Conteo {

@@ -171,8 +171,8 @@ export function reducir(e: EstadoSesion, a: Accion): EstadoSesion {
       const conteo: ConteoGuardado = {
         id: e.conteo.id,
         fecha: a.fin,
-        especie: e.lote.especie as Especie,
-        talla: e.lote.talla as Talla,
+        especie: e.lote.especie,
+        talla: e.lote.talla,
         bolsas: validas.map((b) => b.cantidad),
       };
       return { ...e, historial: [conteo, ...e.historial], conteo: null, bolsas: [], crudo: 0, pausado: false };
@@ -231,7 +231,7 @@ export function estadoDeEjemplo(ahora = new Date()): EstadoSesion {
       {
         id: "ejemplo-1",
         fecha: ayer.toISOString(),
-        especie: "tilapia",
+        especie: "pangasius",
         talla: "mediano",
         bolsas: [1002, 1000, 1004, 1001, 1003, 1000, 1002, 1001, 1000, 1003, 1002, 532],
       },

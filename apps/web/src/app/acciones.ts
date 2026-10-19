@@ -1,4 +1,4 @@
-import { calcularCalibracion, descartarBolsa, uuidV7, type Conteo, type Lote } from "@contador/domain";
+import { VERSION_PERFILES, calcularCalibracion, descartarBolsa, perfilDe, uuidV7, type Conteo, type Lote } from "@contador/domain";
 import type { Repositorio } from "../shared/datos/repositorio";
 import { bolsaAlCerrar, enBolsa, reducir, ultimaBolsaValida, type Accion, type EstadoSesion } from "./sesion";
 
@@ -64,6 +64,8 @@ export function crearAcciones(almacen: Almacen, { repo, ahora = () => new Date()
         talla: e.talla,
         creadoEn: ahora().toISOString(),
         calibracion: { pasadas, factor: r.factor },
+        perfilId: perfilDe(e.especie, e.talla).id,
+        versionPerfiles: VERSION_PERFILES,
       };
       despachar({ tipo: "aceptarPrueba", lote });
       void guardar(repo.guardarLote(lote));

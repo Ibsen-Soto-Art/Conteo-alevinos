@@ -71,6 +71,27 @@ Otros valores de todos los perfiles:
 - **Burbuja:** casi redonda (largo/ancho menor que 1,6) o un **anillo con el centro claro**. Ningún alevino tiene esa forma, ni de lado.
 - **Velocidad esperada** en el canal: típica 15 cm/s y máxima 25 (pequeño), 35 (mediano) o 45 cm/s (grande). Sirve para el ancho de la franja de conteo y para avisar «Muy rápido».
 
+## Los 12 perfiles (generado desde `packages/domain/src/perfiles.ts`)
+
+El ancho va del más delgado visto desde arriba al más grande visto de lado; el área, igual.
+
+| Perfil | Largo (cm) | Ancho (cm) | Área (cm²) | Velocidad máx. (cm/s) |
+| --- | --- | --- | --- | --- |
+| Cachama pequeño | 0,8 – 3,6 | 0,09 – 2,00 | 0,05 – 4,68 | 25 |
+| Cachama mediano | 2,4 – 6,0 | 0,27 – 3,33 | 0,42 – 13,00 | 35 |
+| Cachama grande | 4,0 – 9,6 | 0,44 – 5,33 | 1,16 – 33,28 | 45 |
+| Pangasius pequeño | 0,8 – 3,6 | 0,10 – 1,03 | 0,05 – 2,41 | 25 |
+| Pangasius mediano | 2,4 – 6,0 | 0,30 – 1,71 | 0,47 – 6,69 | 35 |
+| Pangasius grande | 4,0 – 9,6 | 0,50 – 2,74 | 1,30 – 17,12 | 45 |
+| Bocachico (Prochilodus) pequeño | 0,8 – 3,6 | 0,11 – 1,38 | 0,06 – 3,24 | 25 |
+| Bocachico (Prochilodus) mediano | 2,4 – 6,0 | 0,32 – 2,31 | 0,50 – 9,00 | 35 |
+| Bocachico (Prochilodus) grande | 4,0 – 9,6 | 0,53 – 3,69 | 1,39 – 23,04 | 45 |
+| Otra especie pequeño | 0,7 – 3,9 | 0,07 – 2,44 | 0,03 – 6,18 | 25 |
+| Otra especie mediano | 2,1 – 6,5 | 0,21 – 4,06 | 0,29 – 17,16 | 35 |
+| Otra especie grande | 3,5 – 10,4 | 0,35 – 6,50 | 0,80 – 43,94 | 45 |
+
+Versión: `2026-10-19.1`
+
 ## Cómo se ajusta en la finca
 
 1. Si el canal tiene las **4 marcas** de cinta negra de 2 × 2 cm en las esquinas ([docs/hardware/canal.md](../hardware/canal.md)), la app calcula cuántos píxeles mide un centímetro y usa los largos en cm del perfil.

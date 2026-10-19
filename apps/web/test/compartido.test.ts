@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { rutaDesdeHash } from "../src/app/rutas";
+import { ESPECIES, nombreEspecie } from "../src/shared/catalogo";
 import { bolsas, cuando, formatear } from "../src/shared/formato";
 import { paginar } from "../src/shared/ui/Paginador";
 
@@ -8,6 +9,18 @@ describe("formatear", () => {
     expect(formatear(1000)).toBe("1.000");
     expect(formatear(12450)).toBe("12.450");
     expect(formatear(97)).toBe("97");
+  });
+});
+
+describe("catálogo de especies", () => {
+  it("en «Qué pez» quedan cachama, pangasius, bocachico y «Otra especie»", () => {
+    expect(ESPECIES.map((e) => e.nombre)).toEqual(["Cachama", "Pangasius", "Bocachico", "Otra especie"]);
+  });
+
+  it("los conteos viejos siguen mostrando su especie", () => {
+    expect(nombreEspecie("tilapia")).toBe("Tilapia");
+    expect(nombreEspecie("otra")).toBe("Otra especie");
+    expect(nombreEspecie(null)).toBe("");
   });
 });
 

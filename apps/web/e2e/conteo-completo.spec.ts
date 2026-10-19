@@ -15,7 +15,7 @@ test("cuenta, guarda la bolsa y el conteo sigue ahí al recargar", async ({ page
   await expect(page.locator(".ultimo-conteo")).toHaveCount(0);
 
   await page.getByRole("button", { name: "Contar alevinos" }).click();
-  await page.getByRole("button", { name: "Tilapia" }).click();
+  await page.getByRole("button", { name: "Pangasius" }).click();
   await page.getByRole("button", { name: "Grande" }).click();
   await page.getByRole("button", { name: /Siguiente/ }).click();
 
@@ -50,7 +50,7 @@ test("cuenta, guarda la bolsa y el conteo sigue ahí al recargar", async ({ page
   // Se recarga la página: lo contado sigue en el teléfono.
   await page.reload();
   await expect(page.locator(".ultimo-conteo")).toBeVisible();
-  await expect(page.locator(".ultimo-conteo")).toContainText("Tilapia grande · 1 bolsa");
+  await expect(page.locator(".ultimo-conteo")).toContainText("Pangasius grande · 1 bolsa");
   expect(await leer(page, ".ultimo-conteo .tarjeta-numero")).toBe(guardada);
   await expect(page.getByText("Todo guardado")).toBeVisible();
 });

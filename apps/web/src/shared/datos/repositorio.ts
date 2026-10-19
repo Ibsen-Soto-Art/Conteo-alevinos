@@ -1,14 +1,14 @@
 import { bolsasValidas, type Bolsa, type Conteo, type Lote } from "@contador/domain";
 import Dexie, { type EntityTable } from "dexie";
-import type { Especie, Talla } from "../catalogo";
 
 /** Un conteo terminado tal como lo muestran Inicio, Conteos y Resumen. */
 export interface ConteoGuardado {
   id: string;
   /** Fecha ISO de cuando se terminó. */
   fecha: string;
-  especie: Especie;
-  talla: Talla;
+  /** Puede ser una especie que ya no se elige (por ejemplo «tilapia» de conteos viejos). */
+  especie: string;
+  talla: string;
   /** Cantidad de cada bolsa válida, en orden. */
   bolsas: number[];
 }
@@ -70,8 +70,8 @@ export function crearRepositorio(nombre = "contador-alevinos"): Repositorio {
         historial.push({
           id: c.id,
           fecha: c.fin,
-          especie: lote.especie as Especie,
-          talla: lote.talla as Talla,
+          especie: lote.especie,
+          talla: lote.talla,
           bolsas: validas.map((b) => b.cantidad),
         });
       }
