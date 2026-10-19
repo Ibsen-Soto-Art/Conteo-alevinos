@@ -31,7 +31,7 @@ def cuadro_con(manchas: list[tuple[int, int, int, int]], ancho: int = 640, alto:
 
 def test_lee_la_plantilla_con_comas_o_punto_y_coma(tmp_path: Path):
     cabecera = PLANTILLA.read_text(encoding="utf-8").strip()
-    fila = "20261020_cachama_pequeno_001.mp4,si,2026-10-20,La Esperanza,Cachama,Pequeño,150,2,buena,clara,despacio,Moto G,25,abajo,,110,8,,"
+    fila = "20261020_cachama_pequeno_001.mp4,si,,2026-10-20,La Esperanza,Cachama,,Pequeño,150,2,buena,clara,lento,Moto G,25,abajo,,110,8,,,"
     (tmp_path / "a.csv").write_text(f"﻿{cabecera}\n{fila}\n", encoding="utf-8")
     (tmp_path / "b.csv").write_text("Archivo;Usar;Conteo_a_mano\nx.mp4;no;10\ny.mp4;sí;1.200\n;si;5\n", encoding="utf-8")
 

@@ -7,13 +7,13 @@ const CABECERA = readFileSync(new URL("../../../docs/guias/admin/plantilla-video
 
 describe("leerPlantilla", () => {
   it("la plantilla de la guía tiene las columnas que lee el script", () => {
-    for (const c of ["archivo", "usar", "especie", "tamano", "conteo_a_mano", "luz", "celular", "sentido", "umbral", "area_minima", "linea", "distancia"]) {
+    for (const c of ["archivo", "usar", "especie", "tamano", "conteo_a_mano", "luz", "celular", "sentido", "tipo", "especie_exacta", "umbral", "area_minima", "linea", "distancia"]) {
       expect(CABECERA.split(",")).toContain(c);
     }
   });
 
   it("lee un video con los ajustes de fábrica si las columnas técnicas van vacías", () => {
-    const p = leerPlantilla(`${CABECERA}\n20261020_cachama_pequeno_001.mp4,si,2026-10-20,La Esperanza,Cachama,Pequeño,150,2,buena,clara,despacio,Samsung A15,25,,,,,,`);
+    const p = leerPlantilla(`${CABECERA}\n20261020_cachama_pequeno_001.mp4,si,,2026-10-20,La Esperanza,Cachama,,Pequeño,150,2,buena,clara,lento,Samsung A15,25,,,,,,,`);
     expect(p.problemas).toEqual([]);
     expect(p.videos[0]).toMatchObject({
       archivo: "20261020_cachama_pequeno_001.mp4",
