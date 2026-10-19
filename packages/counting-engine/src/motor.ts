@@ -171,6 +171,8 @@ export class MotorConteo {
     this.tiempoCuadro = tiempo ?? null;
     this.eventos = [];
     if (tiempo !== undefined) {
+      // El tiempo volvió atrás (un video que se repite desde el inicio): lo medido antes no vale.
+      if (this.tiempos.length > 0 && tiempo <= this.tiempos[this.tiempos.length - 1]!) this.tiempos = [];
       this.tiempos.push(tiempo);
       if (this.tiempos.length > 30) this.tiempos.shift();
     }
@@ -440,6 +442,7 @@ export class MotorConteo {
    */
   reiniciarFondo() {
     this.fondo?.reiniciar();
+    this.tiempos = [];
     if (this.config.sentidoAutomatico) this.conteos = this.crearConteos();
   }
 

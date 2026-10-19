@@ -160,16 +160,36 @@ export function recorrerCuadroPorCuadro(
   alTerminar?: () => void,
 ): () => void {
   let vivo = true;
+  // Espera a que el cuadro pedido esté de verdad listo para dibujar: «seeked» y, si el navegador
+  // lo tiene, el aviso de cuadro presentado (si no, un cuadro viejo se dibuja a veces).
+  const conAviso = typeof video.requestVideoFrameCallback === "function";
   const ir = (t: number) =>
     new Promise<void>((listo) => {
-      video.addEventListener("seeked", () => listo(), { once: true });
+      let faltan = conAviso ? 2 : 1;
+      const uno = () => {
+        if (--faltan === 0) listo();
+      };
+      video.addEventListener("seeked", uno, { once: true });
+      if (conAviso) {
+        const id = video.requestVideoFrameCallback(() => {
+          clearTimeout(reserva);
+          uno();
+        });
+        // Si el cuadro ya estaba a la vista no llega aviso: se sigue igual después de un momento.
+        const reserva = setTimeout(() => {
+          video.cancelVideoFrameCallback(id);
+          uno();
+        }, 500);
+      }
       video.currentTime = t;
     });
   void (async () => {
     video.pause();
     const paso = 1 / cuadrosPorSegundo;
     for (let i = 0; vivo && i * paso <= video.duration; i++) {
-      const t = i * paso;
+      // El centro del cuadro, no su borde: en el borde el navegador a veces da el anterior.
+      const t = (i + 0.5) * paso;
+      if (t > video.duration) break;
       await ir(t);
       // Mientras busca el canal el motor contesta solo al último cuadro; si está ocupado, se espera.
       for (let intento = 0; vivo && intento < 50; intento++) {

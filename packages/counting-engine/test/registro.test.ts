@@ -42,4 +42,17 @@ describe("registro de eventos de conteo", () => {
     expect(ev).toHaveLength(1);
     expect(ev[0]!.nacioEnFranja).toBe(true);
   });
+
+  it("al repetir un video desde el inicio, los cuadros por segundo no vienen de la vuelta anterior", () => {
+    // Con perfil y marcas la franja se ensancha según los cuadros por segundo: si se mezclaban
+    // los tiempos de la vuelta anterior, la segunda vuelta contaba un cuadro antes o después.
+    const m = motor();
+    pasar(m, de(20, 110)); // tiempos de 200 a 1100 ms: 25 cuadros por segundo
+    m.reiniciarFondo();
+    pasar(m, de(0, 20)); // el video vuelve a empezar: 0 a 200 ms
+    expect(m.cuadrosPorSegundo).toBeCloseTo(25, 6);
+    // Sin reiniciar, también: el tiempo volvió atrás.
+    pasar(m, de(0, 20));
+    expect(m.cuadrosPorSegundo).toBeCloseTo(25, 6);
+  });
 });
