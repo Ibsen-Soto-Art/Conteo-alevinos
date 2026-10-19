@@ -25,6 +25,23 @@ test("cuenta, guarda la bolsa y el conteo sigue ahí al recargar", async ({ page
   await expect(page.getByText("Prueba buena")).toBeVisible();
   await page.getByRole("button", { name: /Siguiente/ }).click();
 
+  // El lote quedó guardado con lo que midió la prueba de sus alevinos (tamaño y forma).
+  const lote = await page.evaluate(
+    () =>
+      new Promise<{ perfilId?: string; estadisticas?: { muestras: number; largo: { mediana: number } } }>((resolver, fallar) => {
+        const abrir = indexedDB.open("contador-alevinos");
+        abrir.onerror = () => fallar(abrir.error);
+        abrir.onsuccess = () => {
+          const pedido = abrir.result.transaction("lotes").objectStore("lotes").getAll();
+          pedido.onsuccess = () => resolver(pedido.result[0]);
+          pedido.onerror = () => fallar(pedido.error);
+        };
+      }),
+  );
+  expect(lote.perfilId).toBe("pangasius-grande");
+  expect(lote.estadisticas?.muestras).toBeGreaterThan(50);
+  expect(lote.estadisticas?.largo.mediana).toBeGreaterThan(0);
+
   await page.getByRole("button", { name: "500", exact: true }).click();
   await page.getByRole("button", { name: "Empezar a contar" }).click();
 

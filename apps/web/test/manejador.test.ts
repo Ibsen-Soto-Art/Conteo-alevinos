@@ -100,3 +100,11 @@ describe("manejador: canal, perfil y fondo", () => {
     expect(manejar({ tipo: "cuadro", ancho: 80, alto: 120, rgba: cuadroRgba([]) })).toMatchObject({ fondo: { estado: "aprendiendo" } });
   });
 });
+
+describe("manejador: lo medido en la prueba", () => {
+  it("contesta lo medido de los alevinos contados y el ancho del recorte", () => {
+    const manejar = crearManejador();
+    manejar({ tipo: "configurar", controles, ancho: 80, alto: 120 });
+    expect(manejar({ tipo: "estadisticas" })).toEqual({ tipo: "estadisticas", estadisticas: null, anchoRecorte: 80 });
+  });
+});

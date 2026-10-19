@@ -66,6 +66,8 @@ export function crearAcciones(almacen: Almacen, { repo, ahora = () => new Date()
         calibracion: { pasadas, factor: r.factor },
         perfilId: perfilDe(e.especie, e.talla).id,
         versionPerfiles: VERSION_PERFILES,
+        // Lo que midió la prueba (tamaño y forma de estos alevinos): ajusta el perfil para contar.
+        estadisticas: e.pruebaEstadisticas,
       };
       despachar({ tipo: "aceptarPrueba", lote });
       void guardar(repo.guardarLote(lote));

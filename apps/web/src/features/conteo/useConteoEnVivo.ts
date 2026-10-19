@@ -1,5 +1,6 @@
 import { hayPocaLuz, type EstadisticasLote, type EstadoFlujo, type EstadoFondo, type PerfilForma } from "@contador/counting-engine";
-import { useEffect, useMemo, useRef, useState } from "react";
+import type { EstadisticasMedidas } from "@contador/domain";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useMotorCompartido } from "../../app/MotorContexto";
 import { leerAjustes } from "./ajustes";
 import { Captura, bucleDeCuadros, type Geometria } from "./captura";
@@ -129,6 +130,28 @@ export function useConteoEnVivo({
     };
   }, [activo, estado, motor, ajustes]);
 
+  /**
+   * Lo que se midió de los alevinos contados (para la Prueba de 100), con el ancho del recorte en
+   * que se midió. null si el motor no contesta a tiempo o no hay suficientes medidas.
+   */
+  const pedirEstadisticas = useCallback(
+    () =>
+      new Promise<EstadisticasMedidas | null>((resolver) => {
+        const tiempo = setTimeout(() => {
+          quitar();
+          resolver(null);
+        }, 1500);
+        const quitar = motor.escuchar((r) => {
+          if (r.tipo !== "estadisticas") return;
+          clearTimeout(tiempo);
+          quitar();
+          resolver(r.estadisticas ? { ...r.estadisticas, anchoRecorte: r.anchoRecorte } : null);
+        });
+        motor.enviar({ tipo: "estadisticas" });
+      }),
+    [motor],
+  );
+
   // Solo en el modo de ejemplo (?demo): las pruebas fuerzan el aviso de flujo para revisar que quepa.
   useEffect(() => {
     const forzar = (e: Event) => {
@@ -139,5 +162,5 @@ export function useConteoEnVivo({
     return () => window.removeEventListener("demo-flujo", forzar);
   }, []);
 
-  return { videoRef, estado, luz, flujo, ajustes, geometria, preparacion, reintentar: () => setIntento((i) => i + 1) };
+  return { videoRef, estado, luz, flujo, ajustes, geometria, preparacion, pedirEstadisticas, reintentar: () => setIntento((i) => i + 1) };
 }

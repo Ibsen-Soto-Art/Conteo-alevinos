@@ -84,6 +84,8 @@ export function crearManejador(reloj: () => number = () => performance.now()) {
       case "reiniciarFondo":
         motor?.reiniciarFondo();
         return null;
+      case "estadisticas":
+        return { tipo: "estadisticas", estadisticas: motor?.estadisticasDelConteo ?? null, anchoRecorte: actual?.ancho ?? 0 };
     }
   };
 }

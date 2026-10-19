@@ -6,6 +6,7 @@ import {
   totalConteo,
   type Bolsa,
   type Conteo,
+  type EstadisticasMedidas,
   type Lote,
 } from "@contador/domain";
 import type { Especie, Talla } from "../shared/catalogo";
@@ -21,6 +22,8 @@ export interface EstadoSesion {
   pruebaEnVivo: number;
   /** Lo que contó la app en la prueba de 100 al terminarla; null mientras no se haya hecho. */
   pruebaApp: number | null;
+  /** Lo que midió la prueba de 100 de los alevinos del lote (tamaño y forma), si alcanzó. */
+  pruebaEstadisticas: EstadisticasMedidas | null;
   /** Se crea al aceptar una prueba de 100 buena; guarda el factor de calibración. */
   lote: Lote | null;
   /** Alevinos por bolsa; null = sin meta, el usuario cierra cada bolsa. */
@@ -43,7 +46,7 @@ export type Accion =
   | { tipo: "elegirEspecie"; especie: Especie }
   | { tipo: "elegirTalla"; talla: Talla }
   | { tipo: "sumarPrueba"; cantidad: number }
-  | { tipo: "resultadoPrueba"; contados: number }
+  | { tipo: "resultadoPrueba"; contados: number; estadisticas?: EstadisticasMedidas | null }
   | { tipo: "repetirPrueba" }
   /** «Volver a cero» durante la prueba: el conteo vuelve a 0, el pez y el tamaño siguen. */
   | { tipo: "pruebaACero" }
@@ -119,6 +122,7 @@ export function reducir(e: EstadoSesion, a: Accion): EstadoSesion {
         talla: null,
         pruebaEnVivo: 0,
         pruebaApp: null,
+        pruebaEstadisticas: null,
         lote: null,
         conteo: null,
         crudo: 0,
@@ -132,10 +136,10 @@ export function reducir(e: EstadoSesion, a: Accion): EstadoSesion {
     case "sumarPrueba":
       return e.pruebaApp === null ? { ...e, pruebaEnVivo: e.pruebaEnVivo + a.cantidad } : e;
     case "resultadoPrueba":
-      return { ...e, pruebaApp: a.contados };
+      return { ...e, pruebaApp: a.contados, pruebaEstadisticas: a.estadisticas ?? null };
     case "repetirPrueba":
     case "pruebaACero":
-      return { ...e, pruebaEnVivo: 0, pruebaApp: null };
+      return { ...e, pruebaEnVivo: 0, pruebaApp: null, pruebaEstadisticas: null };
     case "aceptarPrueba":
       return { ...e, lote: a.lote };
     case "fijarMeta":
@@ -191,6 +195,7 @@ export function estadoInicial(): EstadoSesion {
     talla: null,
     pruebaEnVivo: 0,
     pruebaApp: null,
+    pruebaEstadisticas: null,
     lote: null,
     meta: META_INICIAL,
     conteo: null,

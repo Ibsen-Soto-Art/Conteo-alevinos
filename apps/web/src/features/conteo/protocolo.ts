@@ -113,7 +113,9 @@ export type MensajeAlMotor =
   /** Lote nuevo: vuelve a aprender el tamaño de un alevino. */
   | { tipo: "olvidarArea" }
   /** Volver a mirar el canal vacío (se empieza a contar, se movió el celular). */
-  | { tipo: "reiniciarFondo" };
+  | { tipo: "reiniciarFondo" }
+  /** Lo que se midió de los alevinos contados desde el último «a cero» (la Prueba de 100). */
+  | { tipo: "estadisticas" };
 
 export type MensajeDelMotor =
   | {
@@ -143,6 +145,7 @@ export type MensajeDelMotor =
       /** Cuadros por segundo que procesa el motor. */
       cuadrosPorSegundo: number | null;
     }
+  | { tipo: "estadisticas"; estadisticas: EstadisticasLote | null; anchoRecorte: number }
   /** Análisis del canal, en píxeles del cuadro completo que se analizó (`ancho` × `alto`). */
   | { tipo: "canal"; analisis: AnalisisCanal; ancho: number; alto: number }
   | { tipo: "error"; mensaje: string };

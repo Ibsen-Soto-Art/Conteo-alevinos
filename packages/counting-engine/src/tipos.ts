@@ -56,6 +56,10 @@ export interface Pista {
   /** Lo que aporta al total ahora: máx(0, saldo) × peso con que se contó. */
   aporte: number;
   pesoContado: number;
+  /** Medidas de sus últimos cuadros (con perfil), para aprender el tamaño del lote. */
+  medidas: { largo: number; ancho: number; area: number; relacion: number }[];
+  /** Si ya se usaron sus medidas para el lote. */
+  medida: boolean;
 }
 
 /** Eje y sentido en que corre el agua por el canal. */

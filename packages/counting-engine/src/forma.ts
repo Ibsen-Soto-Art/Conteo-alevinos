@@ -76,9 +76,15 @@ export function estadisticasDe(muestras: Pick<Medidas, "largo" | "ancho" | "area
   };
 }
 
-/** Rango del lote: mediana ± 3 dispersiones, sin salirse de 0,6× a 1,6× la mediana. */
-function rangoDelLote(m: Medida, minimoRelativo = 0.6, maximoRelativo = 1.6): Rango {
-  return [Math.max(m.mediana * minimoRelativo, m.mediana - 3 * m.dispersion), Math.min(m.mediana * maximoRelativo, m.mediana + 3 * m.dispersion)];
+/**
+ * Rango del lote: mediana ± 3 dispersiones, pero al menos ±25 % (un lote parejo puede dar
+ * dispersión 0 y no por eso hay que descartar al que mide un poco menos) y sin salirse de
+ * 0,6× a 1,6× la mediana.
+ */
+export function rangoDelLote(m: Medida, minimoRelativo = 0.6, maximoRelativo = 1.6): Rango {
+  const abajo = Math.min(m.mediana * 0.75, m.mediana - 3 * m.dispersion);
+  const arriba = Math.max(m.mediana * 1.25, m.mediana + 3 * m.dispersion);
+  return [Math.max(m.mediana * minimoRelativo, abajo), Math.min(m.mediana * maximoRelativo, arriba)];
 }
 
 const centro = (r: Rango) => (r[0] + r[1]) / 2;

@@ -1,6 +1,6 @@
 import type { AnalisisCanal } from "@contador/counting-engine";
 import { describe, expect, it } from "vitest";
-import { canalEnVideo, geometriaDe, recorteAVideo } from "../src/features/conteo/captura";
+import { canalEnVideo, escalarEstadisticas, geometriaDe, recorteAVideo } from "../src/features/conteo/captura";
 
 const analisis: AnalisisCanal = {
   zona: { x: 32, y: 40, ancho: 256, alto: 400 },
@@ -38,5 +38,20 @@ describe("canal y recorte", () => {
     const g = geometriaDe({ zona: { x: 100, y: 50, ancho: 960, alto: 600 }, marcas: [], pxPorCm: null, fuente: "luz" });
     expect(g.recorte).toEqual({ ancho: 480, alto: 300 });
     expect(recorteAVideo(240, 150, g)).toEqual({ x: 580, y: 350 });
+  });
+});
+
+describe("medidas del lote en otro recorte", () => {
+  const medidas = { largo: { mediana: 40, dispersion: 2 }, ancho: { mediana: 8, dispersion: 1 }, area: { mediana: 250, dispersion: 20 }, relacion: { mediana: 5, dispersion: 0.4 }, muestras: 87, anchoRecorte: 300 };
+
+  it("si el recorte para contar es más grande, los largos crecen y las áreas al cuadrado", () => {
+    const e = escalarEstadisticas(medidas, 600);
+    expect(e.largo).toEqual({ mediana: 80, dispersion: 4 });
+    expect(e.area.mediana).toBe(1000);
+    expect(e.relacion).toEqual(medidas.relacion);
+  });
+
+  it("con el mismo recorte no cambia", () => {
+    expect(escalarEstadisticas(medidas, 300)).toBe(medidas);
   });
 });

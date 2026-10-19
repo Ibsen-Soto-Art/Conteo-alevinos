@@ -28,6 +28,8 @@ export interface EstadisticasMedidas {
   area: MedidaRobusta;
   relacion: MedidaRobusta;
   muestras: number;
+  /** Ancho del recorte del canal (px) en que se midió: si al contar el recorte cambia, se escala. */
+  anchoRecorte?: number;
 }
 
 export interface Conteo {

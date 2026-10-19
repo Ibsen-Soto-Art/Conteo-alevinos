@@ -122,6 +122,17 @@ describe("sesión de conteo", () => {
 });
 
 describe("prueba de 100", () => {
+  const medidas = { largo: { mediana: 40, dispersion: 2 }, ancho: { mediana: 8, dispersion: 1 }, area: { mediana: 250, dispersion: 20 }, relacion: { mediana: 5, dispersion: 0.4 }, muestras: 87, anchoRecorte: 300 };
+
+  it("guarda lo que midió con el resultado, y repetir o volver a cero lo borra", () => {
+    let e = reducir(estadoInicial(), { tipo: "resultadoPrueba", contados: 97, estadisticas: medidas });
+    expect(e.pruebaEstadisticas).toEqual(medidas);
+    e = reducir(e, { tipo: "repetirPrueba" });
+    expect(e.pruebaEstadisticas).toBeNull();
+    e = reducir(reducir(e, { tipo: "resultadoPrueba", contados: 97, estadisticas: medidas }), { tipo: "pruebaACero" });
+    expect(e.pruebaEstadisticas).toBeNull();
+  });
+
   it("suma en vivo hasta que se termina, y repetir la pone en cero", () => {
     let e = aplicar(estadoInicial(), { tipo: "sumarPrueba", cantidad: 60 }, { tipo: "sumarPrueba", cantidad: 37 });
     expect(e.pruebaEnVivo).toBe(97);

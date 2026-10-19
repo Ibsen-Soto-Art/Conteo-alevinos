@@ -70,7 +70,12 @@ export function Prueba100() {
               type="button"
               className="boton boton-principal"
               disabled={enVivo === 0}
-              onClick={() => despachar({ tipo: "resultadoPrueba", contados: enVivo })}
+              onClick={async () => {
+              const contados = enVivo;
+              // Además del número, lo que midió de estos alevinos (tamaño y forma) para ajustar el perfil.
+              const estadisticas = await vivo.pedirEstadisticas();
+              despachar({ tipo: "resultadoPrueba", contados, estadisticas });
+            }}
             >
               <IconoChulo /> Ya pasaron todos
             </button>

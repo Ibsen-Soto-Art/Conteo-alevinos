@@ -75,6 +75,7 @@ export class Rastreador {
         return;
       }
       const pista = nuevaPista(this.siguienteId++, det);
+      anotarMedidas(pista, det);
       this.pistas.push(pista);
       resultado.push({ pista, antes: null, deteccion: d });
     });
@@ -134,6 +135,8 @@ function nuevaPista(id: number, det: Deteccion): Pista {
     saldo: 0,
     aporte: 0,
     pesoContado: 0,
+    medidas: [],
+    medida: false,
   };
 }
 
@@ -145,8 +148,16 @@ function mover(pista: Pista, det: Deteccion, cuadros: number): { x: number; y: n
   pista.x = det.x;
   pista.y = det.y;
   anotarPeso(pista, det.peso);
+  anotarMedidas(pista, det);
   pista.perdida = 0;
   return antes;
+}
+
+/** Guarda las medidas del cuadro (si la detección las trae) para aprender el tamaño del lote. */
+function anotarMedidas(pista: Pista, det: Deteccion) {
+  if (det.largo === undefined || det.ancho === undefined || det.relacion === undefined) return;
+  pista.medidas.push({ largo: det.largo, ancho: det.ancho, area: det.area, relacion: det.relacion });
+  if (pista.medidas.length > CUADROS_PESO) pista.medidas.shift();
 }
 
 /** Cuadros que se miran para el peso de una pista. */

@@ -57,6 +57,17 @@ export function recorteAVideo(x: number, y: number, g: Geometria): { x: number; 
   return { x: zona.x + (x * zona.ancho) / g.recorte.ancho, y: zona.y + (y * zona.alto) / g.recorte.alto };
 }
 
+/**
+ * Lleva lo medido en un recorte de `anchoRecorte` px a otro de `anchoNuevo` px (largos por la razón,
+ * áreas por la razón al cuadrado; la relación largo/ancho no cambia).
+ */
+export function escalarEstadisticas(e: EstadisticasLote & { anchoRecorte?: number }, anchoNuevo: number): EstadisticasLote {
+  if (!e.anchoRecorte || e.anchoRecorte === anchoNuevo) return e;
+  const k = anchoNuevo / e.anchoRecorte;
+  const por = (m: { mediana: number; dispersion: number }, f: number) => ({ mediana: m.mediana * f, dispersion: m.dispersion * f });
+  return { ...e, largo: por(e.largo, k), ancho: por(e.ancho, k), area: por(e.area, k * k), anchoRecorte: anchoNuevo } as EstadisticasLote;
+}
+
 export interface EnvioMotor {
   enviar(msg: MensajeAlMotor, transferir?: Transferable[]): void;
   enviarCuadro(ancho: number, alto: number, rgba: ArrayBuffer): boolean;
@@ -153,7 +164,7 @@ export class Captura {
       alto: g.recorte.alto,
       perfil: this.op.perfil,
       pxPorCm: g.pxPorCmRecorte,
-      lote: this.op.lote,
+      lote: this.op.lote ? escalarEstadisticas(this.op.lote, g.recorte.ancho) : null,
       fondo: this.op.fondo,
     });
   }

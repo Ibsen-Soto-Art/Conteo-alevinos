@@ -39,6 +39,13 @@ describe("acciones", () => {
     expect(guardado.lotes).toHaveLength(1);
   });
 
+  it("el lote guarda lo que midió la prueba de sus alevinos", () => {
+    const medidas = { largo: { mediana: 40, dispersion: 2 }, ancho: { mediana: 8, dispersion: 1 }, area: { mediana: 250, dispersion: 20 }, relacion: { mediana: 5, dispersion: 0.4 }, muestras: 87, anchoRecorte: 300 };
+    const { almacen, acciones } = preparar({ pruebaApp: 97, pruebaEstadisticas: medidas });
+    acciones.aceptarPrueba();
+    expect(almacen.leer().lote?.estadisticas).toEqual(medidas);
+  });
+
   it("una prueba mala no crea lote", () => {
     const { almacen, acciones } = preparar({ pruebaApp: 80 });
     expect(acciones.aceptarPrueba()).toBe(false);

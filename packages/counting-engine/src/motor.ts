@@ -1,6 +1,6 @@
 import { areaMediana, detectarManchas, pesoDeMancha, type OpcionesDetector } from "./detector";
 import { ModeloFondo, type EstadoFondo, type OpcionesFondo } from "./fondo";
-import { clasificar, estadisticasDe, perfilEnPixeles, pesoPorForma, unirPedazos, type EstadisticasLote, type PerfilForma, type PerfilPx } from "./forma";
+import { clasificar, estadisticasDe, mediana, perfilEnPixeles, pesoPorForma, unirPedazos, type EstadisticasLote, type PerfilForma, type PerfilPx } from "./forma";
 import { MedidorFlujo, type Flujo } from "./flujo";
 import { actualizarConteo, enFlujo, ladoDe, type Franja } from "./franja";
 import { encontrarManchas, type Medidas } from "./manchas";
@@ -75,6 +75,8 @@ export class MotorConteo {
   private muestrasLote: Medidas[] = [];
   private loteAprendido: EstadisticasLote | null = null;
   private medidorFlujo = new MedidorFlujo();
+  /** Una medida (mediana de sus cuadros) por cada alevino suelto contado: lo que aprende la Prueba de 100. */
+  private medidasContados: { largo: number; ancho: number; area: number; relacion: number }[] = [];
   /** Momentos (ms) de los últimos cuadros, para saber cuántos por segundo se procesan. */
   private tiempos: number[] = [];
   /** Largo del canal sobre el eje del flujo en el último cuadro (para no pasarse con la franja). */
@@ -116,7 +118,9 @@ export class MotorConteo {
         quietas.add(deteccion);
         continue;
       }
-      sumados += actualizarConteo(pista, franja, sentido);
+      const cambio = actualizarConteo(pista, franja, sentido);
+      sumados += cambio;
+      if (cambio > 0) this.medirContado(pista);
     }
     this.total += sumados;
     const flujo = this.medidorFlujo.observar(this.rastreador.activas, franja.fin - franja.inicio, this.cuadrosPorSegundo);
@@ -234,6 +238,23 @@ export class MotorConteo {
     this.total = 0;
     this.rastreador.reiniciar();
     this.medidorFlujo.reiniciar();
+    this.medidasContados = [];
+  }
+
+  /**
+   * Medidas de los alevinos sueltos contados desde el último «a cero»: mediana y dispersión de
+   * largo, ancho, área y relación largo/ancho. Es lo que la Prueba de 100 aprende del lote.
+   */
+  get estadisticasDelConteo(): EstadisticasLote | null {
+    return this.medidasContados.length >= 2 ? estadisticasDe(this.medidasContados) : null;
+  }
+
+  /** Un alevino suelto (peso 1) que se acaba de contar: su medida es la mediana de sus cuadros. */
+  private medirContado(pista: Pista) {
+    if (pista.medida || pista.pesoContado !== 1 || pista.medidas.length === 0) return;
+    pista.medida = true;
+    const de = (k: "largo" | "ancho" | "area" | "relacion") => mediana(pista.medidas.map((m) => m[k]));
+    this.medidasContados.push({ largo: de("largo"), ancho: de("ancho"), area: de("area"), relacion: de("relacion") });
   }
 
   actualizarConfiguracion(parcial: Partial<ConfiguracionMotor>) {
