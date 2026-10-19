@@ -1,6 +1,6 @@
 import { areaMediana, detectarManchas, pesoDeMancha, type OpcionesDetector } from "./detector";
 import { ModeloFondo, type EstadoFondo, type OpcionesFondo } from "./fondo";
-import { clasificar, estadisticasDe, mediana, perfilEnPixeles, pesoPorForma, unirPedazos, type EstadisticasLote, type PerfilForma, type PerfilPx } from "./forma";
+import { clasificar, estadisticasDe, mediana, medida, perfilEnPixeles, pesoPorForma, unirPedazos, type EstadisticasLote, type Medida, type PerfilForma, type PerfilPx } from "./forma";
 import { MedidorFlujo, type Flujo } from "./flujo";
 import { CUADROS_PERSISTENCIA, actualizarConteo, avanzaConElFlujo, enFlujo, ladoDe, type Franja } from "./franja";
 import { encontrarManchas, type Medidas } from "./manchas";
@@ -74,7 +74,14 @@ function estaQuieta(pista: Pista): boolean {
   if (pista.edad < CUADROS_QUIETO || r.length < CUADROS_QUIETO) return false;
   return Math.max(...r) - Math.min(...r) <= 2;
 }
-const MUESTRAS_PARA_LOTE = 40;
+/**
+ * Alevinos distintos (uno por pista contada) para aprender el tamaño del lote sin marcas ni Prueba
+ * de 100. Antes eran 40 detecciones, que salían todas del primer objeto (se ve en decenas de
+ * cuadros): con tallas disparejas, los más chicos que él se descartaban por tamaño.
+ */
+const PISTAS_PARA_LOTE = 15;
+/** Alevinos sueltos contados para saber el área de uno y pesar por área las manchas redondas. */
+const SUELTOS_PARA_AREA = 10;
 
 export const SENTIDO_CONTRARIO: Record<SentidoFlujo, SentidoFlujo> = { abajo: "arriba", arriba: "abajo", derecha: "izquierda", izquierda: "derecha" };
 /** Cuánto deben avanzar las manchas en total (en largos del canal) para decidir el sentido. */
@@ -111,8 +118,6 @@ export class MotorConteo {
   private temporal = new Uint8Array(0);
   /** La máscara antes del cierre: con ella se miden las manchas (ver encontrarManchas). */
   private original = new Uint8Array(0);
-  /** Medidas de alevinos sueltos para aprender el lote cuando no viene de la Prueba de 100. */
-  private muestrasLote: Medidas[] = [];
   private loteAprendido: EstadisticasLote | null = null;
   private medidorFlujo = new MedidorFlujo();
   /** Cuadros procesados y eventos del cuadro actual (registro de conteo). */
@@ -222,7 +227,7 @@ export class MotorConteo {
       pista.recorrido.push(enFlujo(pista, c.sentido));
       if (pista.recorrido.length > CUADROS_QUIETO) pista.recorrido.shift();
       // Nació de una mancha que se partió: hereda cómo iba esa mancha frente a la franja.
-      if (separadaDe) c.total += heredarDeLaMadre(pista, separadaDe);
+      if (separadaDe) c.total += heredarDeLaMadre(pista, separadaDe, this.esOtroPez(pista, separadaDe));
       // Una pista nueva que nace dentro de la franja se supone venida de arriba (no se vio antes).
       if (pista.ladoExterior === null) {
         const lado = ladoDe(pista, franja, c.sentido);
@@ -236,9 +241,27 @@ export class MotorConteo {
       // Pegada a otra: cruza con ella y suma si la que la lleva es confiable.
       const cambio = actualizarConteo(pista, franja, c.sentido, portador ? avanzaConElFlujo(portador) : avanzaConElFlujo(pista));
       c.total += cambio;
-      if (cambio > 0) medirContado(pista, c.medidas);
+      if (cambio > 0) {
+        medirContado(pista, c.medidas);
+        this.aprenderLote(c.medidas);
+      }
       if (cambio !== 0) this.eventos.push(this.evento(pista, cambio, c, portador));
     }
+  }
+
+  /**
+   * Lo que se separó de una mancha, ¿es otro pez o un pedazo? Otro pez tiene forma de alevino
+   * entero (alargado) y mide al menos el 60 % de lo que quedó de la mancha; un pedazo (la cola
+   * que se corta en el borde del recorte, una aleta) es corto y rechoncho.
+   */
+  private esOtroPez(hija: Pista, madre: Pista): boolean {
+    const [h] = hija.medidas;
+    // Sin perfil (o sin medidas) no se sabe la forma: otro pez si tiene al menos la mitad del área.
+    if (!this.config.perfil || !h || madre.medidas.length === 0) return hija.areaUltima >= 0.5 * madre.areaUltima;
+    // El mismo límite de «alevino entero» que usa unirPedazos sin tamaño, y comparada con lo que
+    // quedó de la madre (no con su promedio: si iban dos pegados, su promedio es el de los dos).
+    const quedo = madre.medidas[madre.medidas.length - 1]!;
+    return h.relacion >= this.config.perfil.relacionArriba[0] * 0.7 && h.largo >= 0.6 * quedo.largo;
   }
 
   private evento(pista: Pista, cambio: number, c: Conteo, portador?: Pista): EventoConteo {
@@ -321,7 +344,8 @@ export class MotorConteo {
     const detecciones: Deteccion[] = [];
     const descartadas: Deteccion[] = [];
     for (const m of manchas) {
-      const d = aDeteccion(m, perfil?.largoTipico ? pesoPorForma(m, perfil) : pesoDeMancha(m.area, this.areaTipica));
+      // Con perfil, el peso sale siempre de la forma (sin tamaño: lomos y área de uno vista).
+      const d = aDeteccion(m, perfil ? pesoPorForma(m, perfil) : pesoDeMancha(m.area, this.areaTipica));
       if (!perfil) {
         detecciones.push(d);
         continue;
@@ -329,7 +353,6 @@ export class MotorConteo {
       const c = clasificar(m, perfil);
       if (c.acepta) {
         detecciones.push(d);
-        this.aprenderLote(m, perfil);
       } else if (m.area >= perfil.areaMinima) {
         descartadas.push({ ...d, motivo: c.motivo });
       }
@@ -373,19 +396,33 @@ export class MotorConteo {
   perfilPx(): PerfilPx | null {
     const { perfil, lote, pxPorCm, detector } = this.config;
     if (!perfil) return null;
-    return perfilEnPixeles(perfil, { lote: lote ?? (pxPorCm ? null : this.loteAprendido), pxPorCm, areaMinima: detector.areaMinima });
+    return {
+      ...perfilEnPixeles(perfil, { lote: lote ?? (pxPorCm ? null : this.loteAprendido), pxPorCm, areaMinima: detector.areaMinima }),
+      ...this.unoVisto(),
+    };
   }
 
-  /** Sin Prueba de 100 ni marcas: aprende el tamaño de los primeros alevinos sueltos que ve. */
-  private aprenderLote(m: Medidas, perfil: PerfilPx) {
-    if (this.config.lote || this.loteAprendido || perfil.origen !== "amplio") return;
-    const suelto = m.cuerpos === 1 && m.relacion >= perfil.relacionArriba[0] * 0.8 && m.solidez >= perfil.solidezMinima;
-    if (!suelto) return;
-    this.muestrasLote.push(m);
-    if (this.muestrasLote.length >= MUESTRAS_PARA_LOTE) {
-      this.loteAprendido = estadisticasDe(this.muestrasLote);
-      this.muestrasLote = [];
-    }
+  /**
+   * Área mediana y largo (mediana y dispersión) de los alevinos sueltos ya contados (desde
+   * arriba), si son al menos SUELTOS_PARA_AREA: «uno» medido en este canal y con estos objetos.
+   */
+  private unoVisto(): { areaUnoVista: number | null; largoUnoVisto: Medida | null } {
+    const minimo = (this.config.perfil?.relacionArriba[0] ?? 0) * 0.7;
+    const sueltos = this.lider.medidas.filter((m) => m.relacion >= minimo);
+    if (sueltos.length < SUELTOS_PARA_AREA) return { areaUnoVista: null, largoUnoVisto: null };
+    return { areaUnoVista: mediana(sueltos.map((m) => m.area)), largoUnoVisto: medida(sueltos.map((m) => m.largo)) };
+  }
+
+  /**
+   * Sin Prueba de 100 ni marcas: aprende el tamaño del lote de los primeros alevinos sueltos que
+   * cuenta, uno por pista (la mediana de sus medidas), cuando ya son PISTAS_PARA_LOTE distintos.
+   */
+  private aprenderLote(medidas: MedidaContado[]) {
+    if (this.config.lote || this.config.pxPorCm || this.loteAprendido || !this.config.perfil) return;
+    const [minimo] = this.config.perfil.relacionArriba;
+    // Desde arriba y solos: los de lado (más anchos) no dicen el tamaño de uno visto desde arriba.
+    const sueltos = medidas.filter((m) => m.relacion >= minimo * 0.8);
+    if (sueltos.length >= PISTAS_PARA_LOTE) this.loteAprendido = estadisticasDe(sueltos);
   }
 
   /** Vuelve el contador a cero (nueva bolsa) sin olvidar lo aprendido del lote. */
@@ -433,7 +470,6 @@ export class MotorConteo {
     this.areaAprendida = null;
     this.muestras = [];
     this.loteAprendido = null;
-    this.muestrasLote = [];
   }
 
   /**
@@ -457,11 +493,18 @@ export class MotorConteo {
 }
 
 /**
- * Una pista nueva salió de la mancha de `madre` (se partió). Hereda su lado de la franja y su
- * saldo; si la madre ya estaba contada, se le pasa parte de su peso: entre las dos suman lo
- * mismo, o lo que faltaba si la mancha pegada valía 1 y eran dos. Devuelve cuánto cambia el total.
+ * Una pista nueva salió de la mancha de `madre` (se partió). Devuelve cuánto cambia el total.
+ * - Un pedazo nunca cuenta solo: queda como si ya hubiera pasado la franja, sin saldo.
+ * - Otro pez hereda el lado de la franja y el saldo de la madre; si la madre ya estaba contada,
+ *   se le pasa parte de su peso: entre las dos suman lo mismo, o lo que faltaba si la mancha
+ *   pegada valía 1 y eran dos peces.
  */
-function heredarDeLaMadre(hija: Pista, madre: Pista): number {
+function heredarDeLaMadre(hija: Pista, madre: Pista, otroPez: boolean): number {
+  if (!otroPez) {
+    hija.ladoExterior = "despues";
+    hija.saldo = 0;
+    return 0;
+  }
   hija.ladoExterior = madre.ladoExterior;
   hija.saldo = madre.saldo;
   if (madre.aporte <= 0) return 0;

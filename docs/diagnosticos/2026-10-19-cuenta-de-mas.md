@@ -32,9 +32,17 @@ Pruebas que reproducen cada caso (fallaban antes del arreglo): `packages/countin
 
 «Solo sube = 0», los regresos que restan, el pangasius de lado (pesa 1), dos pegados lado a lado (2), tres separados (3), el pez partido en 3 con marcas (1) y el sentido automático: todas sus pruebas siguen igual.
 
-## Pendiente (cuenta de menos, no de más)
+## Cuenta de menos (revisado después, mismo método)
 
-En las mismas simulaciones aparecieron dos casos que cuentan **de menos**: sin marcas y con tallas disparejas (2 a 3,6 cm) 40 de 50, y grupos apretados de objetos anchos (32 × 10 px) entre 40 y 49 de 50. Se revisan aparte.
+Pruebas: `packages/counting-engine/test/defecto.test.ts` (fallaban antes de cada arreglo).
+
+| Caso | Causa con evidencia | Arreglo | Antes → después |
+| --- | --- | --- | --- |
+| A. Sin marcas, tallas disparejas (2 a 3,6 cm) | El tamaño del lote se aprendía con las 40 primeras **detecciones**, que salían todas del primer objeto (se ve en decenas de cuadros). Rango ±25 % de ese objeto: los 10 de menos de 2,25 cm se descartaron todos por «tamaño». | Se aprende con un dato por **objeto contado** (mediana de sus medidas), al tener 15 distintos. | 40 → **50** de 50; el más grande primero: 16 → **30** de 30 |
+| A'. (al arreglar A) Un pedazo que se corta al salir del recorte sumaba 1 | La regla de separación suponía que una mancha contada como 1 que se parte escondía un segundo pez. | Lo que se separa es «otro pez» solo si tiene forma de alevino entero y mide al menos el 60 % de lo que quedó de la mancha; un pedazo nunca cuenta solo. | partido en 2 sin marcas: 12 → **6** de 6 |
+| B. Grupos apretados de objetos anchos | Al cruzar, varios objetos iban en **una sola mancha con peso 1**. (1) Sin el tamaño, el peso era siempre 1: ni miraba los dos lomos. (2) Dos en fila apenas encimados (1,75 largos de los objetos reales) quedaban por debajo del límite del perfil (≥ 3,96 cm). (3) Dos lado a lado formando una mancha **redonda** se descartaban como «burbuja». | Con perfil, el peso sale siempre de la forma (también sin tamaño: los lomos). Cuando ya se contaron 10 sueltos, se usan **su** largo y **su** área: «dos en fila» si mide más de 1,7 largos vistos (y 4 dispersiones); una mancha más redonda que cualquier pez de lado y con 1,6 áreas de uno vale por área, y no es burbuja. | grupos de objetos anchos: 40–48 → **44–49** de 50 |
+
+**Lo que queda (ambigüedad real, no se cambió a propósito):** dos objetos anchos pegados de lado y girados forman una mancha alargada (relación 1,7 a 2,3) con el doble del área de uno: es lo mismo que mide **una cachama de lado**. Contarla por área volvería al error de «pangasius de lado = 3». Eso se evita en el montaje (canal angosto, echarlos de a pocos) y lo corrige el factor de la Prueba de 100 (hasta ±10 %).
 
 ## Cómo confirmarlo en campo
 

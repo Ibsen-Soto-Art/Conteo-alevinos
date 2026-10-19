@@ -50,6 +50,14 @@ export interface PerfilPx {
   areaMinima: number;
   /** De dónde salió el tamaño. */
   origen: "lote" | "escala" | "amplio";
+  /**
+   * Área mediana de los alevinos sueltos ya contados en este conteo (vistos, no del perfil); null
+   * hasta tener suficientes. Con ella una mancha más redonda que cualquier pez de lado se pesa por
+   * área (son varios pegados lado a lado).
+   */
+  areaUnoVista?: number | null;
+  /** Largo de los alevinos sueltos ya contados (mediana y dispersión); null hasta tener suficientes. */
+  largoUnoVisto?: Medida | null;
 }
 
 const DESVIACION_ROBUSTA = 1.4826;
@@ -162,7 +170,7 @@ export function clasificar(m: Medidas, p: PerfilPx): { acepta: true } | { acepta
   // Burbujas: anillo con el centro claro, o una mancha casi redonda y llena (una cruz o una
   // estrella también son «redondas» en sus momentos, pero no son llenas: esas son basura).
   if (m.hueco >= 0.12 && m.relacion < 2.2) return { acepta: false, motivo: "burbuja" };
-  if (m.relacion < RELACION_BURBUJA && m.cuerpos < 2 && m.solidez >= 0.8) return { acepta: false, motivo: "burbuja" };
+  if (m.relacion < RELACION_BURBUJA && m.cuerpos < 2 && m.solidez >= 0.8 && !variosPorArea(m, p)) return { acepta: false, motivo: "burbuja" };
 
   // Varios alevinos: dos cuerpos lado a lado (y aun así alargada: una cruz también tiene dos
   // «lomos», pero es redonda), o más larga o más ancha que uno solo.
@@ -187,6 +195,15 @@ export function clasificar(m: Medidas, p: PerfilPx): { acepta: true } | { acepta
   return { acepta: true };
 }
 
+/**
+ * ¿Una mancha más redonda que cualquier pez (aun de lado) y con el área de 1,6 o más sueltos? Son
+ * varios pegados lado a lado. Solo cuando ya se vieron sueltos (área de uno observada).
+ */
+function variosPorArea(m: Medidas, p: PerfilPx): boolean {
+  const a = p.areaUnoVista;
+  return a !== undefined && a !== null && a > 0 && m.relacion < p.relacionLado[0] * 0.9 && m.area >= 1.6 * a;
+}
+
 /** Ancho máximo de UN alevino (visto de lado), en px; null si no se sabe el tamaño. */
 export function anchoMaximoDeUno(p: PerfilPx): number | null {
   if (p.largoTipico === null) return null;
@@ -203,16 +220,25 @@ export function pesoPorForma(m: Medidas, p: PerfilPx): number {
   const L = p.largoTipico;
   const W = p.anchoTipico;
   const anchoUno = anchoMaximoDeUno(p);
-  if (L === null || W === null || anchoUno === null) return 1;
+  // Varios pegados lado a lado que forman una mancha redonda: por área (área de uno observada).
+  const porArea = variosPorArea(m, p) ? Math.round(m.area / p.areaUnoVista!) : 1;
+  // En fila según el largo de los sueltos ya vistos: más que 1,7 de ellos y que 4 dispersiones.
+  const visto = p.largoUnoVisto;
+  const porLargoVisto =
+    visto && m.largo > Math.max(1.7 * visto.mediana, visto.mediana + 4 * visto.dispersion) ? Math.max(2, Math.round(m.largo / visto.mediana)) : 1;
+  // Sin tamaño: los dos lomos (cabezas o colas lado a lado) en una mancha alargada, o el área.
+  if (L === null || W === null || anchoUno === null)
+    return Math.max(1, porArea, porLargoVisto, m.cuerpos >= 2 && m.relacion >= RELACION_BURBUJA ? m.cuerpos : 1);
   // Dos en fila (cola con cabeza) miden ~2 largos típicos. Para valer 2 por largo hace falta
   // evidencia clara: 1,75 largos típicos y un 10 % más que el largo máximo de uno del perfil.
   // Antes bastaba 1,5 típicos: un alevino de 3,3 a 3,6 cm con perfil pequeño (1–3 cm ± 20 %)
   // valía 2 aunque el perfil lo acepta como uno (prueba en campo: 50 objetos, contó 64).
+  // Con sueltos ya vistos manda su largo real (ver porLargoVisto), no el del perfil.
   const largoDeUno = Math.max(1.75 * L, (p.largo?.[1] ?? 0) * 1.1);
-  const porLargo = m.largo > largoDeUno ? Math.max(2, Math.round(m.largo / L)) : 1;
+  const porLargo = visto ? porLargoVisto : m.largo > largoDeUno ? Math.max(2, Math.round(m.largo / L)) : 1;
   const porAncho = m.ancho > anchoUno * 1.15 ? Math.max(2, Math.round(m.ancho / (W * 1.15))) : 1;
   const lateral = Math.max(m.cuerpos, porAncho);
-  const peso = porLargo > 1 && lateral > 1 ? porLargo * lateral : Math.max(porLargo, lateral);
+  const peso = Math.max(porArea, porLargo > 1 && lateral > 1 ? porLargo * lateral : Math.max(porLargo, lateral));
   // Nunca más alevinos de los que caben en el área.
   const areaUno = 0.65 * L * W;
   return Math.max(1, Math.min(peso, Math.ceil(m.area / (areaUno * 0.6))));
