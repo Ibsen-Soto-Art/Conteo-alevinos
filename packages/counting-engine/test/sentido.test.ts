@@ -95,4 +95,64 @@ describe("sentido automático del agua", () => {
     const r = pasar(m, [baja()]);
     expect([r.sentidoDecidido, r.total, r.sentido]).toEqual([false, 1, "abajo"]);
   });
+
+  describe("en los primeros segundos, antes de saber el sentido", () => {
+    /** Como `pasar`, pero anota si ya sabía el sentido al terminar cada alevino y suma lo que se informa. */
+    function pasarAnotando(m: MotorConteo, recorridos: { x: number; ys: number[] }[]) {
+      let r = m.procesar(cuadroCon([]));
+      let informado = r.sumadosEnEsteCuadro;
+      const decidido: boolean[] = [];
+      for (const { x, ys } of recorridos) {
+        for (const y of ys) {
+          r = m.procesar(cuadroCon([{ x, y, ancho: 4, alto: 4 }]));
+          informado += r.sumadosEnEsteCuadro;
+        }
+        decidido.push(r.sentidoDecidido);
+        for (let i = 0; i < 5; i++) {
+          r = m.procesar(cuadroCon([]));
+          informado += r.sumadosEnEsteCuadro;
+        }
+      }
+      return { r, informado, decidido };
+    }
+
+    it("uno sube contra la corriente (viene de la salida) y los demás bajan: el total queda exacto", () => {
+      const { r, informado, decidido } = pasarAnotando(motor(), [
+        { x: 30, ys: baja() },
+        { x: 64, ys: sube() }, // contra la corriente: nunca cruzó hacia la salida, no cuenta ni resta
+        { x: 30, ys: baja() },
+        { x: 30, ys: baja() },
+        { x: 30, ys: baja() },
+      ]);
+      expect(decidido.slice(0, 2)).toEqual([false, false]); // pasó cuando aún no sabía el sentido
+      expect([r.total, r.sentido, r.sentidoDecidido]).toEqual([4, "abajo", true]);
+      expect(informado).toBe(4); // lo que suma la pantalla
+    });
+
+    it("uno ya contado se devuelve por la franja antes de decidir: se resta", () => {
+      const { r, informado, decidido } = pasarAnotando(motor(), [
+        { x: 30, ys: [...baja(), ...recorrido(108, 4)] }, // baja, cruza, se da vuelta y sube
+        { x: 30, ys: baja() },
+        { x: 30, ys: baja() },
+        { x: 30, ys: baja() },
+      ]);
+      expect(decidido[0]).toBe(false);
+      expect([r.total, r.sentido]).toEqual([3, "abajo"]);
+      expect(informado).toBe(3);
+    });
+
+    it("celular al revés y el primero nada contra la corriente: al decidir, ese no queda contado", () => {
+      // El agua sube en la imagen; el primer alevino baja (contra la corriente) y por un momento
+      // el conteo «abajo» va ganando 1 a 0. Al decidir «arriba», ese cruce no cuenta.
+      const { r, informado, decidido } = pasarAnotando(motor(), [
+        { x: 64, ys: baja() },
+        { x: 30, ys: sube() },
+        { x: 30, ys: sube() },
+        { x: 30, ys: sube() },
+      ]);
+      expect(decidido[0]).toBe(false);
+      expect([r.total, r.sentido, r.sentidoDecidido]).toEqual([3, "arriba", true]);
+      expect(informado).toBe(3); // la pantalla sumó 1 y luego lo quitó: termina exacta
+    });
+  });
 });
