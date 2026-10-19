@@ -515,7 +515,17 @@ export function Laboratorio() {
                             {f.sentido}
                             {f.decidido ? "" : "?"}
                           </td>
-                          <td>{[f.unida && "pedazos unidos", f.nacioEnFranja && "nació en la franja", f.recuperada > 0 && `recuperada ×${f.recuperada}`].filter(Boolean).join(" · ")}</td>
+                          <td>
+                            {[
+                              f.unida && "pedazos unidos",
+                              f.nacioEnFranja && "nació en la franja",
+                              f.recuperada > 0 && `recuperada ×${f.recuperada}`,
+                              f.separadaDe !== null && `se separó de #${f.separadaDe}`,
+                              f.llevadaPor !== null && `pegada a #${f.llevadaPor}`,
+                            ]
+                              .filter(Boolean)
+                              .join(" · ")}
+                          </td>
                         </tr>
                       ))}
                   </tbody>
@@ -636,6 +646,8 @@ function resumir(registro: FilaRegistro[], sentido: string | null): string {
     r.nacidasEnFranja > 0 && `${r.nacidasEnFranja} de pistas nacidas en la franja`,
     r.recuperadas > 0 && `${r.recuperadas} de pistas recuperadas`,
     r.unidas > 0 && `${r.unidas} de pedazos unidos`,
+    r.separadas !== 0 && `${r.separadas} de manchas que se separaron`,
+    r.llevadas !== 0 && `${r.llevadas} cruzando pegadas a otra`,
   ]
     .filter(Boolean)
     .join(" · ");

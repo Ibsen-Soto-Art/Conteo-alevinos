@@ -62,8 +62,11 @@ export function avanzaConElFlujo(pista: Pista): boolean {
  * Conteo neto: pasar de antes a después de la franja suma 1 (si la pista avanza con el flujo);
  * pasar de después a antes resta 1. Cada pista aporta máx(0, saldo) × su peso: así una que baja,
  * sube y vuelve a bajar queda en 1, y una que solo sube (venía de la bolsa) no resta nada.
+ *
+ * `confiable`: si cumple la persistencia para sumar. Por defecto la suya; una pista que va pegada
+ * a otra usa la de la que la lleva (ella no se ve sola).
  */
-export function actualizarConteo(pista: Pista, franja: Franja, sentido: SentidoFlujo): number {
+export function actualizarConteo(pista: Pista, franja: Franja, sentido: SentidoFlujo, confiable = avanzaConElFlujo(pista)): number {
   const lado = ladoDe(pista, franja, sentido);
   if (lado === "dentro") return 0;
   if (pista.ladoExterior === null) {
@@ -72,7 +75,7 @@ export function actualizarConteo(pista: Pista, franja: Franja, sentido: SentidoF
   }
   if (pista.ladoExterior === "antes" && lado === "despues") {
     // Si todavía no cumple la persistencia, el cruce queda pendiente (sigue «antes»).
-    if (!avanzaConElFlujo(pista)) return 0;
+    if (!confiable) return 0;
     pista.saldo++;
   } else if (pista.ladoExterior === "despues" && lado === "antes") {
     pista.saldo--;

@@ -204,7 +204,12 @@ export function pesoPorForma(m: Medidas, p: PerfilPx): number {
   const W = p.anchoTipico;
   const anchoUno = anchoMaximoDeUno(p);
   if (L === null || W === null || anchoUno === null) return 1;
-  const porLargo = m.largo > 1.5 * L ? Math.round(m.largo / L) : 1;
+  // Dos en fila (cola con cabeza) miden ~2 largos típicos. Para valer 2 por largo hace falta
+  // evidencia clara: 1,75 largos típicos y un 10 % más que el largo máximo de uno del perfil.
+  // Antes bastaba 1,5 típicos: un alevino de 3,3 a 3,6 cm con perfil pequeño (1–3 cm ± 20 %)
+  // valía 2 aunque el perfil lo acepta como uno (prueba en campo: 50 objetos, contó 64).
+  const largoDeUno = Math.max(1.75 * L, (p.largo?.[1] ?? 0) * 1.1);
+  const porLargo = m.largo > largoDeUno ? Math.max(2, Math.round(m.largo / L)) : 1;
   const porAncho = m.ancho > anchoUno * 1.15 ? Math.max(2, Math.round(m.ancho / (W * 1.15))) : 1;
   const lateral = Math.max(m.cuerpos, porAncho);
   const peso = porLargo > 1 && lateral > 1 ? porLargo * lateral : Math.max(porLargo, lateral);
@@ -218,12 +223,20 @@ export function pesoPorForma(m: Medidas, p: PerfilPx): number {
  * pueden partir su sombra en cabeza, cuerpo y cola. Dos manchas se unen si juntas miden un
  * alevino (largo y ancho), van una detrás de la otra sobre el mismo eje (no lado a lado) y el
  * hueco entre ellas es corto. Tres alevinos enteros en fila no se unen: juntos miden tres largos.
+ *
+ * Sin el tamaño (sin marcas ni lote todavía) se unen solo si juntas tienen la forma de UN
+ * alevino del perfil visto desde arriba, cada una es claramente más corta que la unión y el hueco
+ * es corto. Antes, sin tamaño no se unía nada y un pez partido en dos contaba 2.
  */
 export function unirPedazos(manchas: Medidas[], p: PerfilPx): Medidas[] {
   const L = p.largoTipico;
   const W = p.anchoTipico;
   const anchoUno = anchoMaximoDeUno(p);
-  if (L === null || W === null || anchoUno === null || manchas.length < 2) return manchas;
+  if (manchas.length < 2) return manchas;
+  const esUnPez =
+    L === null || W === null || anchoUno === null
+      ? (a: Medidas, b: Medidas, u: Medidas) => pareceUnPezSinTamano(a, b, u, p)
+      : (a: Medidas, b: Medidas, u: Medidas) => sonUnMismoPez(a, b, u, L, W, anchoUno);
 
   let grupos = [...manchas].sort((a, b) => b.area - a.area);
   let cambio = true;
@@ -232,7 +245,7 @@ export function unirPedazos(manchas: Medidas[], p: PerfilPx): Medidas[] {
     for (let i = 0; i < grupos.length && !cambio; i++) {
       for (let j = i + 1; j < grupos.length && !cambio; j++) {
         const u = unir(grupos[i]!, grupos[j]!);
-        if (sonUnMismoPez(grupos[i]!, grupos[j]!, u, L, W, anchoUno)) {
+        if (esUnPez(grupos[i]!, grupos[j]!, u)) {
           grupos = [u, ...grupos.filter((_, k) => k !== i && k !== j)];
           cambio = true;
         }
@@ -244,6 +257,24 @@ export function unirPedazos(manchas: Medidas[], p: PerfilPx): Medidas[] {
 
 function sonUnMismoPez(a: Medidas, b: Medidas, u: Medidas, L: number, W: number, anchoUno: number): boolean {
   if (u.largo > 1.35 * L || u.ancho > anchoUno) return false;
+  return enLinea(a, b, u, 0.35 * L, Math.max(0.6 * W, 2));
+}
+
+/** Sin tamaño: juntas tienen forma de un alevino desde arriba y son pedazos (no dos enteros). */
+function pareceUnPezSinTamano(a: Medidas, b: Medidas, u: Medidas, p: PerfilPx): boolean {
+  const [relMin, relMax] = p.relacionArriba;
+  if (u.relacion < relMin * 0.8 || u.relacion > relMax) return false;
+  // Dos alevinos enteros cola con cabeza: cada uno mide la mitad de la unión, pero la unión es el
+  // doble de alargada que uno; con pedazos, cada uno es mucho más corto que el pez.
+  if (Math.max(a.largo, b.largo) > 0.75 * u.largo) return false;
+  // Si las dos ya tienen forma de alevino entero, son dos enteros en fila (en un grupo apretado
+  // de objetos rechonchos pasaba: 50 contaban 27). Los pedazos de un pez son más rechonchos.
+  if (Math.min(a.relacion, b.relacion) >= relMin * 0.7) return false;
+  return enLinea(a, b, u, 0.2 * u.largo, Math.max(0.6 * u.ancho, 2));
+}
+
+/** Uno detrás del otro sobre el eje de la unión (no lado a lado), con un hueco corto y alineados. */
+function enLinea(a: Medidas, b: Medidas, u: Medidas, huecoMaximo: number, lateralMaximo: number): boolean {
   const c = Math.cos(u.angulo);
   const s = Math.sin(u.angulo);
   const tramo = (m: Medidas) => {
@@ -261,10 +292,10 @@ function sonUnMismoPez(a: Medidas, b: Medidas, u: Medidas, L: number, W: number,
   const solape = Math.min(a1, b1) - Math.max(a0, b0);
   // Lado a lado: se solapan a lo largo del eje. Un pez partido: uno detrás del otro.
   if (solape > 0.3 * Math.min(a1 - a0, b1 - b0)) return false;
-  if (-solape > 0.35 * L) return false;
+  if (-solape > huecoMaximo) return false;
   // Alineados: los dos centros cerca del eje de la unión.
   const lateral = (m: Medidas) => Math.abs(-(m.x - u.x) * s + (m.y - u.y) * c);
-  return Math.max(lateral(a), lateral(b)) <= Math.max(0.6 * W, 2);
+  return Math.max(lateral(a), lateral(b)) <= lateralMaximo;
 }
 
 /** Una mancha que junta las dos: área, centro y momentos exactos; envolvente de ambas. */

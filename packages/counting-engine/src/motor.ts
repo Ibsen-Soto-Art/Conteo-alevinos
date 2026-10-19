@@ -2,7 +2,7 @@ import { areaMediana, detectarManchas, pesoDeMancha, type OpcionesDetector } fro
 import { ModeloFondo, type EstadoFondo, type OpcionesFondo } from "./fondo";
 import { clasificar, estadisticasDe, mediana, perfilEnPixeles, pesoPorForma, unirPedazos, type EstadisticasLote, type PerfilForma, type PerfilPx } from "./forma";
 import { MedidorFlujo, type Flujo } from "./flujo";
-import { CUADROS_PERSISTENCIA, actualizarConteo, enFlujo, ladoDe, type Franja } from "./franja";
+import { CUADROS_PERSISTENCIA, actualizarConteo, avanzaConElFlujo, enFlujo, ladoDe, type Franja } from "./franja";
 import { encontrarManchas, type Medidas } from "./manchas";
 import { cerrar } from "./morfologia";
 import { Rastreador, type OpcionesRastreador } from "./rastreador";
@@ -215,10 +215,12 @@ export class MotorConteo {
   private contarCon(c: Conteo, todas: Deteccion[]) {
     const franja = this.franjaDe(c.sentido);
     c.quietas = new Set();
-    for (const { pista, deteccion } of c.rastreador.actualizar(todas)) {
+    for (const { pista, deteccion, portador, separadaDe } of c.rastreador.actualizar(todas)) {
       pista.edad++;
       pista.recorrido.push(enFlujo(pista, c.sentido));
       if (pista.recorrido.length > CUADROS_QUIETO) pista.recorrido.shift();
+      // Nació de una mancha que se partió: hereda cómo iba esa mancha frente a la franja.
+      if (separadaDe) c.total += heredarDeLaMadre(pista, separadaDe);
       // Una pista nueva que nace dentro de la franja se supone venida de arriba (no se vio antes).
       if (pista.ladoExterior === null) {
         const lado = ladoDe(pista, franja, c.sentido);
@@ -226,17 +228,18 @@ export class MotorConteo {
         pista.ladoExterior = lado === "despues" ? "despues" : "antes";
       }
       if (estaQuieta(pista)) {
-        c.quietas.add(deteccion);
+        if (!portador) c.quietas.add(deteccion);
         continue;
       }
-      const cambio = actualizarConteo(pista, franja, c.sentido);
+      // Pegada a otra: cruza con ella y suma si la que la lleva es confiable.
+      const cambio = actualizarConteo(pista, franja, c.sentido, portador ? avanzaConElFlujo(portador) : avanzaConElFlujo(pista));
       c.total += cambio;
       if (cambio > 0) medirContado(pista, c.medidas);
-      if (cambio !== 0) this.eventos.push(this.evento(pista, cambio, c));
+      if (cambio !== 0) this.eventos.push(this.evento(pista, cambio, c, portador));
     }
   }
 
-  private evento(pista: Pista, cambio: number, c: Conteo): EventoConteo {
+  private evento(pista: Pista, cambio: number, c: Conteo, portador?: Pista): EventoConteo {
     const de = (k: "largo" | "ancho" | "area") => (pista.medidas.length ? mediana(pista.medidas.map((m) => m[k])) : null);
     return {
       cuadro: this.numeroCuadro,
@@ -256,6 +259,8 @@ export class MotorConteo {
       unida: pista.unida,
       nacioEnFranja: pista.nacioEnFranja,
       recuperada: pista.recuperada,
+      separadaDe: pista.separadaDe,
+      llevadaPor: portador?.id ?? null,
     };
   }
 
@@ -446,6 +451,26 @@ export class MotorConteo {
       this.muestras = [];
     }
   }
+}
+
+/**
+ * Una pista nueva salió de la mancha de `madre` (se partió). Hereda su lado de la franja y su
+ * saldo; si la madre ya estaba contada, se le pasa parte de su peso: entre las dos suman lo
+ * mismo, o lo que faltaba si la mancha pegada valía 1 y eran dos. Devuelve cuánto cambia el total.
+ */
+function heredarDeLaMadre(hija: Pista, madre: Pista): number {
+  hija.ladoExterior = madre.ladoExterior;
+  hija.saldo = madre.saldo;
+  if (madre.aporte <= 0) return 0;
+  const k = Math.max(1, hija.peso);
+  const antes = madre.aporte;
+  const vueltas = Math.max(0, madre.saldo);
+  madre.pesoContado = Math.max(1, madre.pesoContado - k);
+  madre.aporte = vueltas * madre.pesoContado;
+  hija.pesoContado = k;
+  hija.aporte = vueltas * k;
+  hija.contada = hija.aporte > 0;
+  return madre.aporte + hija.aporte - antes;
 }
 
 /** Un alevino suelto (peso 1) que se acaba de contar: su medida es la mediana de sus cuadros. */

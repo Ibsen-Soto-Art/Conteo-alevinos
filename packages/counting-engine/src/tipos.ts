@@ -72,6 +72,12 @@ export interface Pista {
   nacioEnFranja: boolean;
   /** Para el registro: veces que heredó una pista perdida. */
   recuperada: number;
+  /** Área de su última mancha (para ver si se le pegó otra o se le separó una). */
+  areaUltima: number;
+  /** Si nació de una mancha que se partió: el ID de esa pista. */
+  separadaDe: number | null;
+  /** Mientras va pegada a otra (una sola mancha): el ID de la que la lleva. */
+  llevadaPor: number | null;
 }
 
 /** Un cambio del total causado por una pista (para el registro de /laboratorio). */
@@ -101,6 +107,10 @@ export interface EventoConteo {
   unida: boolean;
   nacioEnFranja: boolean;
   recuperada: number;
+  /** Nació de una mancha que se partió: el ID de esa pista. */
+  separadaDe: number | null;
+  /** Cruzó mientras iba pegada a otra: el ID de la que la llevaba. */
+  llevadaPor: number | null;
 }
 
 /** Eje y sentido en que corre el agua por el canal. */

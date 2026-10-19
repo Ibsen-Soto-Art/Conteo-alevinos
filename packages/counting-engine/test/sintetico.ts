@@ -31,13 +31,24 @@ export function cuadroConFiguras(figuras: Figura[], ancho = 160, alto = 240, fon
   const datos = new Uint8Array(ancho * alto).fill(fondo);
   for (const f of figuras) {
     const gris = f.gris ?? 30;
-    for (let y = 0; y < alto; y++) {
-      for (let x = 0; x < ancho; x++) {
+    // Solo se recorre el rectángulo que contiene la figura (el resultado es el mismo).
+    const [x0, y0, x1, y1] = caja(f);
+    for (let y = Math.max(0, y0); y < Math.min(alto, y1); y++) {
+      for (let x = Math.max(0, x0); x < Math.min(ancho, x1); x++) {
         if (dentro(f, x + 0.5, y + 0.5)) datos[y * ancho + x] = gris;
       }
     }
   }
   return { ancho, alto, datos };
+}
+
+/** Rectángulo (en px enteros, con margen) que contiene la figura. */
+function caja(f: Figura): [number, number, number, number] {
+  const r =
+    f.tipo === "rect" ? null : f.tipo === "anillo" ? f.radio : Math.max(f.largo, f.ancho) / 2;
+  if (r === null && f.tipo === "rect") return [Math.floor(f.x) - 1, Math.floor(f.y) - 1, Math.ceil(f.x + f.ancho) + 1, Math.ceil(f.y + f.alto) + 1];
+  const { cx, cy } = f as { cx: number; cy: number };
+  return [Math.floor(cx - r! - 1), Math.floor(cy - r! - 1), Math.ceil(cx + r! + 1), Math.ceil(cy + r! + 1)];
 }
 
 function dentro(f: Figura, x: number, y: number): boolean {

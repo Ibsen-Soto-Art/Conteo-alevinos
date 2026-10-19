@@ -29,6 +29,8 @@ export const COLUMNAS_REGISTRO = [
   "pedazos_unidos",
   "nacio_en_franja",
   "recuperada",
+  "separada_de",
+  "llevada_por",
 ] as const;
 
 const redondo = (n: number | null, d = 1) => (n === null ? "" : n.toFixed(d));
@@ -55,6 +57,8 @@ export function valoresFila(f: FilaRegistro): string[] {
     f.unida ? "si" : "no",
     f.nacioEnFranja ? "si" : "no",
     String(f.recuperada),
+    f.separadaDe === null ? "" : String(f.separadaDe),
+    f.llevadaPor === null ? "" : String(f.llevadaPor),
   ];
 }
 
@@ -76,5 +80,7 @@ export function resumenRegistro(filas: FilaRegistro[], sentido: string | null) {
     nacidasEnFranja: suma((f) => f.nacioEnFranja),
     recuperadas: suma((f) => f.recuperada > 0),
     unidas: suma((f) => f.unida),
+    separadas: suma((f) => f.separadaDe !== null),
+    llevadas: suma((f) => f.llevadaPor !== null),
   };
 }
