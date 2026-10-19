@@ -10,6 +10,9 @@ La idea, en pocas palabras:
 4. Se separan las fotos en dos grupos: unas para **aprender** y otras para **comprobar**.
 5. El computador **entrena** el detector (YOLO nano).
 6. Se **exporta** a ONNX, el formato que corre en el teléfono.
+7. Se **mide** por especie: cuántos alevinos vio de más y de menos, y si marca algo en los videos sin alevinos.
+
+**Una sola clase, `alevino`**, para las tres especies (cachama, pangasius y bocachico) y las demás: para contar basta saber dónde hay un alevino, y la especie la elige el campesino. Lo que **no** es alevino se enseña con los **videos sin alevinos** de la guía (canal vacío, solo burbujas, solo basura): sus fotos entran al entrenamiento **sin cajas**. La especie y la especie exacta de cada video se guardan aparte para medir el error de cada una.
 
 > ⚖️ **Licencia.** Este entrenamiento usa **Ultralytics YOLO**, que tiene licencia **AGPL-3.0**. Sirve para pruebas. Antes de **vender el servicio**, hay que comprar la licencia comercial de Ultralytics o cambiar a un detector con licencia **Apache 2.0** (YOLOX o RTMDet). Ver [Cambiar a YOLOX o RTMDet](#cambiar-a-yolox-o-rtmdet) y la ADR [0002](../docs/decisiones/0002-conteo-en-el-telefono.md).
 
@@ -69,7 +72,7 @@ Lee la plantilla `videos.csv`, salta los videos con `usar = no` y guarda **un cu
 python -m contador_ml.preetiquetar --videos ~/videos-entrenamiento
 ```
 
-Marca con una caja cada mancha oscura, con el umbral y el área mínima de cada video (columnas `umbral` y `area_minima` de la plantilla; si están vacías, los de fábrica). Escribe un archivo `.txt` por cuadro en `data/etiquetas_previas/`, en formato YOLO: una línea por alevino con `clase centro_x centro_y ancho alto`, todo de 0 a 1.
+Marca con una caja cada mancha oscura, con el umbral y el área mínima de cada video (columnas `umbral` y `area_minima` de la plantilla; si están vacías, los de fábrica). Los videos con `tipo` = `vacio`, `burbujas` o `basura` quedan **sin cajas**: todo lo que se ve en ellos es lo que el detector debe aprender a no marcar (por eso hace falta `--videos`). Escribe un archivo `.txt` por cuadro en `data/etiquetas_previas/`, en formato YOLO: una línea por alevino con `clase centro_x centro_y ancho alto`, todo de 0 a 1.
 
 Estas cajas **no son perfectas**: dos alevinos pegados quedan en una sola caja, una burbuja puede salir como alevino. Por eso se revisan.
 
@@ -113,6 +116,7 @@ Copia las cajas revisadas a `data/etiquetas_revisadas/`, en la carpeta de cada v
 
 Consejos para revisar bien:
 - Revise **todas** las fotos de un video, no solo algunas: el modelo aprende tanto de los alevinos como de lo que **no** es alevino.
+- En los videos sin alevinos no debe quedar ninguna caja. Si se coló un alevino, márquelo (y corrija la plantilla).
 - Si un alevino se ve solo a medias en el borde de la foto, márquelo igual.
 - Si no está seguro de si es un alevino, mire las fotos de antes y después.
 
@@ -121,14 +125,16 @@ Consejos para revisar bien:
 ## Paso 4: separar fotos para aprender y para comprobar
 
 ```bash
-python -m contador_ml.dividir
+python -m contador_ml.dividir --videos ~/videos-entrenamiento
 ```
 
 Arma `data/conjunto/` con dos grupos:
 - **train** (≈ 80 %): las fotos con las que el detector aprende.
 - **val** (≈ 20 %): fotos que **no** ve al aprender, para comprobar si de verdad aprendió.
 
-Separa **por video**, no por foto: dos fotos del mismo video son casi iguales, y si una queda en cada grupo el resultado parece mejor de lo que es. De cada especie deja al menos un video para comprobar (si tiene dos o más).
+Separa **por video**, no por foto: dos fotos del mismo video son casi iguales, y si una queda en cada grupo el resultado parece mejor de lo que es. De cada especie, y de cada tipo de video sin alevinos, deja al menos un video para comprobar (si tiene dos o más).
+
+También escribe `data/conjunto/videos.csv`: de cada video, en qué grupo quedó, su `tipo`, `especie`, `especie_exacta` y `tamano` (de la plantilla). El paso 7 lo usa para medir por especie. Sin `--videos`, la especie sale del nombre del archivo y la especie exacta queda vacía.
 
 Para probar todo el camino antes de revisar en CVAT: `python -m contador_ml.dividir --sin-revisar` (usa las pre-etiquetas; no sirve para el modelo de verdad).
 
@@ -159,6 +165,21 @@ Toma el último `best.pt` y lo convierte a **ONNX**, el formato que la app corre
 
 Los modelos, los cuadros y los entrenamientos **no van al repositorio** (pesan mucho; `.gitignore` los excluye): guárdelos en un disco o en la nube. Conectar el modelo a la app es un paso posterior (ADR 0002).
 
+## Paso 7: medir por especie
+
+```bash
+python -m contador_ml.evaluar
+```
+
+Corre el último `.onnx` de `modelos/` (con ONNX Runtime, el mismo archivo que irá al teléfono) en las fotos de **validación** y las compara con las cajas revisadas. Una caja **acierta** si se sobrepone a un alevino marcado (IoU ≥ 0,5). Entrega, en la terminal y en `runs/evaluacion-AAAAMMDD-HHMM.md`:
+
+- **Por especie** y **por especie exacta** (por ejemplo los distintos *Prochilodus*): fotos, alevinos marcados, detectados, aciertos, **de más** (cajas donde no había alevino), **de menos** (alevinos sin caja) y el **error de conteo** = (detectados − marcados) ÷ marcados.
+- **Sin alevinos**: por tipo (vacío, burbujas, basura), cuántas cajas falsas marcó y en cuántas fotos. La meta es 0.
+
+Opciones: `--modelo modelos/alevinos-….onnx`, `--umbral 0.3` (confianza mínima de una caja, por defecto 0,25).
+
+El error de conteo puede salir 0 % aunque el detector se equivoque (una caja de más y una de menos se compensan): por eso se miran también «de más» y «de menos». Esto mide fotos sueltas; el conteo de videos completos se mide con `pnpm precision` (ver [tests/precision](../tests/precision/README.md)).
+
 ## Cambiar a YOLOX o RTMDet
 
 Antes de cobrar por el servicio hay que salir de la licencia AGPL de Ultralytics (o comprar la comercial). Todo lo de los pasos 1 a 4 sirve igual: solo cambian el entrenamiento y la exportación.
@@ -188,7 +209,8 @@ Cada detector entrega la salida del ONNX con una forma distinta: cuando la app u
 | `contador_ml/dividir.py` | Paso 4: separar por video en train y val |
 | `contador_ml/entrenar.py` | Paso 5: entrenar YOLO nano (Ultralytics, AGPL) |
 | `contador_ml/exportar.py` | Paso 6: exportar a ONNX y comprobarlo |
+| `contador_ml/evaluar.py` | Paso 7: de más, de menos y error por especie, especie exacta y negativos |
 | `contador_ml/coco.py` | Convertir a COCO para YOLOX o RTMDet |
 | `requirements*.txt` | Librerías: `-datos` (pasos 1 a 4), completo (entrenar), `-pruebas` |
-| `tests/` | Pruebas de los pasos 1 a 4 (`python -m pytest tests`); las corre la CI |
+| `tests/` | Pruebas de los pasos 1 a 4 y 7 (`python -m pytest tests`); las corre la CI |
 | `data/`, `runs/`, `modelos/` | Se crean al usarlo; no van al repositorio |

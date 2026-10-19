@@ -11,7 +11,8 @@ import yaml
 from contador_ml.coco import yolo_a_coco
 from contador_ml.comun import leer_plantilla
 from contador_ml.cvat import empaquetar, recibir
-from contador_ml.dividir import armar, repartir
+from contador_ml.dividir import armar, leer_metadatos, repartir
+from contador_ml.evaluar import cuadrar, decodificar, emparejar, evaluar, informe
 from contador_ml.extraer import extraer_video
 from contador_ml.preetiquetar import detectar_cajas, preetiquetar
 
@@ -41,6 +42,18 @@ def test_lee_la_plantilla_con_comas_o_punto_y_coma(tmp_path: Path):
     )
     [y] = leer_plantilla(tmp_path / "b.csv")
     assert (y.archivo, y.conteo_a_mano, y.umbral) == ("y.mp4", 1200, 100)
+
+
+def test_lee_el_tipo_y_la_especie_exacta(tmp_path: Path):
+    (tmp_path / "c.csv").write_text(
+        "archivo,tipo,especie,especie_exacta,tamano,conteo_a_mano\n"
+        "a.mp4,,Bocachico,Prochilodus magdalenae,mediano,100\n"
+        "b.mp4,Burbujas,,,,0\n",
+        encoding="utf-8",
+    )
+    a, b = leer_plantilla(tmp_path / "c.csv")
+    assert (a.tipo, a.especie, a.especie_exacta, a.negativo, a.grupo) == ("alevinos", "bocachico", "Prochilodus magdalenae", False, "bocachico")
+    assert (b.tipo, b.especie, b.negativo, b.grupo) == ("burbujas", "", True, "burbujas")
 
 
 # ---------- paso 1: cuadros ----------
@@ -85,6 +98,14 @@ def test_preetiqueta_una_carpeta_en_formato_yolo(tmp_path: Path):
     lineas = (tmp_path / "previas/v1/v1_00001.txt").read_text().splitlines()
     assert len(lineas) == 2 and all(l.startswith("0 ") and len(l.split()) == 5 for l in lineas)
     assert (tmp_path / "previas/v1/v1_00002.txt").read_text() == ""
+
+
+def test_los_videos_sin_alevinos_quedan_sin_cajas(tmp_path: Path):
+    # En un video de burbujas, una mancha oscura es justo lo que el detector debe aprender a NO marcar.
+    (tmp_path / "cuadros/burbujas").mkdir(parents=True)
+    cv2.imwrite(str(tmp_path / "cuadros/burbujas/burbujas_00001.jpg"), cuadro_con([(100, 100, 16, 16)]))
+    assert preetiquetar(tmp_path / "cuadros", tmp_path / "previas", sin_alevinos={"burbujas"}) == (1, 0)
+    assert (tmp_path / "previas/burbujas/burbujas_00001.txt").read_text() == ""
 
 
 # ---------- paso 3: CVAT ----------
@@ -149,6 +170,37 @@ def test_arma_el_conjunto_sin_mezclar_videos(tmp_path: Path):
     assert datos["train"] == "images/train" and datos["val"] == "images/val" and datos["names"] == {0: "alevino"}
 
 
+def test_guarda_tipo_especie_y_especie_exacta_y_reparte_tambien_los_negativos(tmp_path: Path):
+    from contador_ml.comun import Video
+
+    cuadros, etiquetas = tmp_path / "cuadros", tmp_path / "etiquetas"
+    metadatos = {}
+    nombres = [f"2026102{i}_bocachico_mediano_00{i}" for i in range(4)] + [f"2026102{i}_burbujas_00{i}" for i in range(2)]
+    for i, video in enumerate(nombres):
+        (cuadros / video).mkdir(parents=True)
+        (etiquetas / video).mkdir(parents=True)
+        cv2.imwrite(str(cuadros / video / f"{video}_00001.jpg"), cuadro_con([]))
+        negativo = "burbujas" in video
+        (etiquetas / video / f"{video}_00001.txt").write_text("" if negativo else "0 0.5 0.5 0.1 0.1\n")
+        metadatos[video] = Video(
+            archivo=f"{video}.mp4", especie="" if negativo else "bocachico", tamano="" if negativo else "mediano",
+            conteo_a_mano=0 if negativo else 10, umbral=100, area_minima=6,
+            tipo="burbujas" if negativo else "alevinos", especie_exacta="" if negativo or i % 2 else "Prochilodus magdalenae",
+        )
+    destino = tmp_path / "conjunto"
+    armar(cuadros, etiquetas, destino, metadatos=metadatos)
+    filas = leer_metadatos(destino)
+    assert set(filas) == set(nombres)
+    assert filas["20261020_bocachico_mediano_000"] == {
+        "video": "20261020_bocachico_mediano_000", "parte": filas["20261020_bocachico_mediano_000"]["parte"], "tipo": "alevinos",
+        "especie": "bocachico", "especie_exacta": "Prochilodus magdalenae", "tamano": "mediano", "cuadros": "1",
+    }
+    # Uno de los dos videos de burbujas queda para comprobar, con su etiqueta vacía.
+    burbujas_val = [v for v, f in filas.items() if f["tipo"] == "burbujas" and f["parte"] == "val"]
+    assert len(burbujas_val) == 1
+    assert (destino / "labels/val" / f"{burbujas_val[0]}_00001.txt").read_text() == ""
+
+
 # ---------- COCO (YOLOX / RTMDet) ----------
 
 
@@ -164,3 +216,58 @@ def test_convierte_a_coco_con_cajas_en_pixeles(tmp_path: Path):
     assert anotacion["bbox"] == [240.0, 162.0, 160.0, 36.0]
     assert anotacion["category_id"] == 1 and anotacion["area"] == 5760.0
     json.dumps(coco)
+
+
+# ---------- paso 7: evaluar por especie ----------
+
+
+def test_empareja_cajas_y_separa_lo_de_mas_y_lo_de_menos():
+    reales = [(0.2, 0.2, 0.1, 0.1), (0.6, 0.6, 0.1, 0.1)]
+    pred = [(0.21, 0.2, 0.1, 0.1, 0.9), (0.2, 0.21, 0.1, 0.1, 0.5), (0.9, 0.9, 0.05, 0.05, 0.8)]
+    # Acierta el primero; la segunda caja sobre el mismo alevino y la de la esquina sobran; falta el de (0.6, 0.6).
+    assert emparejar(pred, reales) == (1, 2, 1)
+    assert emparejar([], reales) == (0, 0, 2)
+    assert emparejar(pred, []) == (0, 3, 0)
+
+
+def test_decodifica_la_salida_de_yolo_en_la_imagen_original():
+    imagen = np.zeros((640, 360, 3), dtype=np.uint8)  # vertical, como el celular
+    tensor, escala, dx, dy = cuadrar(imagen, 320)
+    assert tensor.shape == (1, 3, 320, 320) and (escala, dx, dy) == (0.5, 70, 0)
+    # Un alevino en el centro de la imagen original (180, 320), de 20 × 60 px; otro casi igual (repetido) y uno flojo.
+    salida = np.array([[[70 + 90, 70 + 91, 100], [160, 160, 50], [10, 10, 10], [30, 30, 30], [0.9, 0.6, 0.1]]], dtype=np.float32)
+    [caja] = decodificar(salida, imagen.shape[:2], escala, dx, dy, umbral=0.25)
+    assert caja[:4] == pytest.approx((0.5, 0.5, 20 / 360, 60 / 640))
+    assert caja[4] == pytest.approx(0.9)
+
+
+def test_evalua_por_especie_por_especie_exacta_y_los_negativos_aparte(tmp_path: Path):
+    from contador_ml.comun import Video
+
+    cuadros, etiquetas = tmp_path / "cuadros", tmp_path / "etiquetas"
+    metadatos = {}
+    videos = {"20261020_cachama_pequeno_001": "alevinos", "20261020_bocachico_mediano_001": "alevinos", "20261020_burbujas_001": "burbujas"}
+    for video, tipo in videos.items():
+        (cuadros / video).mkdir(parents=True)
+        (etiquetas / video).mkdir(parents=True)
+        cv2.imwrite(str(cuadros / video / f"{video}_00001.jpg"), cuadro_con([]))
+        (etiquetas / video / f"{video}_00001.txt").write_text("" if tipo == "burbujas" else "0 0.2 0.2 0.1 0.1\n0 0.6 0.6 0.1 0.1\n")
+        especie = "" if tipo == "burbujas" else video.split("_")[1]
+        metadatos[video] = Video(f"{video}.mp4", especie, "", 0, 100, 6, tipo=tipo, especie_exacta="Prochilodus magdalenae" if especie == "bocachico" else "")
+    destino = tmp_path / "conjunto"
+    armar(cuadros, etiquetas, destino, fraccion_val=0.0, metadatos=metadatos)  # todo en train: se evalúa en train
+
+    # Un detector de mentiras: ve bien el primer alevino, se le escapa el segundo y marca una burbuja.
+    predecir = lambda img: [(0.2, 0.2, 0.1, 0.1, 0.9), (0.9, 0.1, 0.05, 0.05, 0.7)]
+    ev = evaluar(destino, predecir, parte="train")
+    cachama = ev.especies["cachama"]
+    assert (cachama.imagenes, cachama.etiquetados, cachama.detectados, cachama.aciertos, cachama.de_mas, cachama.de_menos) == (1, 2, 2, 1, 1, 1)
+    assert cachama.error_conteo == 0.0  # en el número se compensan; por eso se mide de más y de menos
+    assert set(ev.exactas) == {"bocachico · Prochilodus magdalenae"}
+    assert ev.negativos["burbujas"].de_mas == 2 and ev.negativos["burbujas"].fotos_con_falsas == 1
+    assert (ev.total.etiquetados, ev.total.aciertos) == (4, 2)  # los negativos no entran al total
+
+    texto = informe(ev, "prueba.onnx")
+    assert "| cachama | 1 | 1 | 2 | 2 | 1 | +1 | -1 | 0,0 % |" in texto
+    assert "| **Total** | 2 | 2 | 4 | 4 | 2 | +2 | -2 | 0,0 % |" in texto
+    assert "## Por especie exacta" in texto and "| burbujas | 1 | 1 | 2 | 1 |" in texto

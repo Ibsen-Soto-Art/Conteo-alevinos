@@ -16,8 +16,11 @@ REVISADAS = DATOS / "etiquetas_revisadas"
 CONJUNTO = DATOS / "conjunto"
 CVAT = DATOS / "cvat"
 
-# Una sola clase: para contar basta saber dónde hay un alevino.
+# Una sola clase: para contar basta saber dónde hay un alevino (de cualquiera de las especies).
+# Lo que no es alevino (burbujas, basura, canal vacío) entra como imágenes sin cajas.
 CLASES = ["alevino"]
+# Videos sin alevinos (columna «tipo» de la plantilla): todos sus cuadros van sin cajas.
+TIPOS_NEGATIVOS = ("vacio", "burbujas", "basura")
 EXTENSIONES_IMAGEN = (".jpg", ".jpeg", ".png")
 
 # Ajustes de fábrica del motor (packages/counting-engine/src/ajustes.ts), medidos en un
@@ -41,6 +44,19 @@ class Video:
     conteo_a_mano: int | None
     umbral: float
     area_minima: float
+    tipo: str = "alevinos"
+    # Opcional, p. ej. «Prochilodus magdalenae»: el bocachico es un solo perfil en la app.
+    especie_exacta: str = ""
+
+    @property
+    def negativo(self) -> bool:
+        """Un video sin alevinos: canal vacío, solo burbujas o solo basura."""
+        return self.tipo in TIPOS_NEGATIVOS
+
+    @property
+    def grupo(self) -> str:
+        """Con qué se reparte y se mide: la especie, o el tipo en los videos sin alevinos."""
+        return self.tipo if self.negativo else self.especie
 
     @property
     def nombre(self) -> str:
@@ -62,10 +78,13 @@ def leer_plantilla(ruta: Path) -> list[Video]:
         if normalizar(f.get("usar", "")) in ("no", "n", "0", "false") or not f.get("archivo"):
             continue
         conteo = f.get("conteo_a_mano", "").replace(".", "").replace(" ", "")
+        tipo = normalizar(f.get("tipo", "")) or "alevinos"
         videos.append(
             Video(
                 archivo=f["archivo"],
-                especie=normalizar(f.get("especie", "")) or "sin_especie",
+                tipo=tipo,
+                especie_exacta=f.get("especie_exacta", ""),
+                especie=normalizar(f.get("especie", "")) or ("" if tipo in TIPOS_NEGATIVOS else "sin_especie"),
                 tamano=normalizar(f.get("tamano", "")),
                 conteo_a_mano=int(conteo) if conteo.isdigit() else None,
                 umbral=_numero(f.get("umbral"), UMBRAL),
