@@ -11,6 +11,7 @@ Cada archivo guarda **una** decisión: qué se decidió, por qué y qué se desc
 | [0005](0005-solo-dos-roles.md) | Solo dos roles: dueño de finca y administrador | Aceptada |
 | [0006](0006-licencia-sin-conexion.md) | Acceso sin internet con licencia firmada que vence | Propuesta |
 | [0007](0007-solo-conteo.md) | La app solo facilita el conteo | Aceptada |
+| [0008](0008-motor-clasico-con-perfiles.md) | Motor clásico con perfiles de especie, fondo aprendido y franja de conteo neto | Aceptada |
 
 ## Formato
 
