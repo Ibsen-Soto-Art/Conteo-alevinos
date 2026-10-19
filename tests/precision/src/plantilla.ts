@@ -73,6 +73,7 @@ export function leerPlantilla(texto: string): Plantilla {
       ["umbral", "umbral"],
       ["area_minima", "areaMinima"],
       ["linea", "lineaPorcentaje"],
+      ["franja_ancho", "franjaAncho"],
       ["distancia", "distanciaMaxima"],
     ];
     for (const [columna, clave] of numericas) {

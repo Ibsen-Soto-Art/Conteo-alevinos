@@ -597,21 +597,24 @@ html:not(.modo-laboratorio) body {
   gap: var(--hueco);
 }
 
-.camara-linea {
+/* Franja de conteo: dos bordes amarillos con el medio apenas sombreado. */
+.camara-franja {
   position: absolute;
   left: 0;
   right: 0;
-  top: 50%;
-  border-top: 4px dashed #ffd400;
+  border-top: 3px dashed #ffd400;
+  border-bottom: 3px dashed #ffd400;
+  background: rgb(255 212 0 / 0.12);
   pointer-events: none;
 }
 
-.camara-linea-vertical {
+.camara-franja-vertical {
   top: 0;
   bottom: 0;
   right: auto;
-  border-top: none;
-  border-left: 4px dashed #ffd400;
+  border: none;
+  border-left: 3px dashed #ffd400;
+  border-right: 3px dashed #ffd400;
 }
 
 /* Mensaje sobre la cámara cuando no está lista; el texto blanco va sobre fondo oscuro. */

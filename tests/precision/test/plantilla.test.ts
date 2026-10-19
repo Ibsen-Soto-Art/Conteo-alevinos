@@ -26,9 +26,9 @@ describe("leerPlantilla", () => {
   });
 
   it("usa el sentido y los ajustes técnicos de la fila", () => {
-    const p = leerPlantilla(`archivo;conteo_a_mano;sentido;umbral;area_minima;linea;distancia\na.mp4;1.200;Izquierda;120;8;40;30,5`);
+    const p = leerPlantilla(`archivo;conteo_a_mano;sentido;umbral;area_minima;linea;franja_ancho;distancia\na.mp4;1.200;Izquierda;120;8;40;14;30,5`);
     expect(p.videos[0]!.conteoAMano).toBe(1200);
-    expect(p.videos[0]!.ajustes).toEqual({ umbral: 120, areaMinima: 8, lineaPorcentaje: 40, sentido: "izquierda", distanciaMaxima: 30.5 });
+    expect(p.videos[0]!.ajustes).toEqual({ umbral: 120, areaMinima: 8, lineaPorcentaje: 40, franjaAncho: 14, sentido: "izquierda", distanciaMaxima: 30.5 });
   });
 
   it("acepta los nombres de columna con tilde", () => {

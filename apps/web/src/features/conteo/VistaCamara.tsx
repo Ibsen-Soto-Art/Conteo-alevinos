@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode, type RefObject } from "react";
 import { useMotorCompartido } from "../../app/MotorContexto";
 import { IconoAviso, IconoProblema, IconoSol } from "../../shared/ui/Iconos";
-import { flujoVertical, lineaEnVista, puntoEnVista, type Controles, type MensajeDelMotor } from "./protocolo";
+import { flujoVertical, franjaPorcentaje, lineaEnVista, puntoEnVista, type Controles, type MensajeDelMotor } from "./protocolo";
 import type { EstadoCamara, Luz } from "./useConteoEnVivo";
 
 const MENSAJES: Record<Exclude<EstadoCamara, "lista">, string> = {
@@ -89,12 +89,14 @@ export function VistaCamara({
     });
   }, [motor, estado, vista]);
 
+  // La franja de conteo: dos bordes donde de verdad los ve el motor (recortados a la vista).
   const vertical = flujoVertical(ajustes.sentido);
-  const linea =
+  const largoVista = vertical ? vista.alto : vista.ancho;
+  const franja =
     estado === "lista" && video.ancho > 0 && vista.ancho > 0
-      ? lineaEnVista(ajustes.lineaPorcentaje, ajustes.sentido, video, vista)
+      ? franjaPorcentaje(ajustes).map((p) => Math.min(largoVista, Math.max(0, lineaEnVista(p, ajustes.sentido, video, vista))))
       : null;
-  const lineaVisible = linea !== null && linea >= 0 && linea <= (vertical ? vista.alto : vista.ancho);
+  const franjaVisible = franja !== null && franja[1]! > franja[0]!;
 
   return (
     <div ref={caja} className={`camara ${className}`}>
@@ -106,10 +108,10 @@ export function VistaCamara({
         onLoadedMetadata={(e) => setVideo({ ancho: e.currentTarget.videoWidth, alto: e.currentTarget.videoHeight })}
       />
       {estado === "lista" && <canvas ref={marcas} className="camara-marcas" aria-hidden="true" />}
-      {lineaVisible && (
+      {franjaVisible && (
         <div
-          className={vertical ? "camara-linea" : "camara-linea camara-linea-vertical"}
-          style={vertical ? { top: linea } : { left: linea }}
+          className={vertical ? "camara-franja" : "camara-franja camara-franja-vertical"}
+          style={vertical ? { top: franja[0], height: franja[1]! - franja[0]! } : { left: franja[0], width: franja[1]! - franja[0]! }}
         />
       )}
       {estado !== "lista" && (

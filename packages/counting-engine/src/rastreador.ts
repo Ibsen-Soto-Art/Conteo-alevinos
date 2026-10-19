@@ -7,19 +7,33 @@ export interface OpcionesRastreador {
   cuadrosDeGracia: number;
 }
 
+/** Resultado de un cuadro para una pista: su posición anterior y la detección que le tocó. */
+export interface Actualizacion {
+  pista: Pista;
+  antes: { x: number; y: number } | null;
+  deteccion: number;
+}
+
+/** Cuadros que se recuerda una pista perdida, por si reaparece (~1 s). */
+const CUADROS_MEMORIA = 30;
+
 /**
  * Sigue cada mancha entre cuadros emparejando por cercanía, para que un mismo
  * alevino no se cuente dos veces. Cada pista predice su siguiente posición con la
- * velocidad del último cuadro, así un alevino rápido no se pierde.
+ * velocidad del último cuadro, así un alevino rápido no se pierde. Si una pista se pierde
+ * (una burbuja la tapa, la luz parpadea) y algo aparece donde debía estar, hereda su historia.
  */
 export class Rastreador {
   private pistas: Pista[] = [];
+  private perdidas: { pista: Pista; vistoEn: number }[] = [];
+  private cuadro = 0;
   private siguienteId = 1;
 
   constructor(private readonly op: OpcionesRastreador) {}
 
-  /** Devuelve, por cada pista, su posición anterior y la nueva. */
-  actualizar(detecciones: Deteccion[]): { pista: Pista; antes: { x: number; y: number } | null }[] {
+  /** Devuelve, por cada pista vista en este cuadro, su posición anterior y su detección. */
+  actualizar(detecciones: Deteccion[]): Actualizacion[] {
+    this.cuadro++;
     const pares: { d2: number; p: number; d: number }[] = [];
     const max2 = this.op.distanciaMaxima ** 2;
     this.pistas.forEach((pista, p) => {
@@ -33,48 +47,64 @@ export class Rastreador {
 
     const detDePista = new Map<number, number>();
     const detUsada = new Set<number>();
-    const resultado: { pista: Pista; antes: { x: number; y: number } | null }[] = [];
+    const resultado: Actualizacion[] = [];
 
     for (const { p, d } of pares) {
       if (detDePista.has(p) || detUsada.has(d)) continue;
       detDePista.set(p, d);
       detUsada.add(d);
       const pista = this.pistas[p]!;
-      const det = detecciones[d]!;
-      const antes = { x: pista.x, y: pista.y };
-      const cuadros = pista.perdida + 1;
-      pista.vx = (det.x - pista.x) / cuadros;
-      pista.vy = (det.y - pista.y) / cuadros;
-      pista.x = det.x;
-      pista.y = det.y;
-      anotarPeso(pista, det.peso);
-      pista.perdida = 0;
-      resultado.push({ pista, antes });
+      resultado.push({ pista, antes: mover(pista, detecciones[d]!, pista.perdida + 1), deteccion: d });
     }
 
     this.pistas.forEach((pista, p) => {
       if (!detDePista.has(p)) pista.perdida++;
     });
+    for (const pista of this.pistas) {
+      if (pista.perdida > this.op.cuadrosDeGracia) this.perdidas.push({ pista, vistoEn: this.cuadro - pista.perdida });
+    }
     this.pistas = this.pistas.filter((p) => p.perdida <= this.op.cuadrosDeGracia);
+    this.perdidas = this.perdidas.filter((p) => this.cuadro - p.vistoEn <= CUADROS_MEMORIA);
 
     detecciones.forEach((det, d) => {
       if (detUsada.has(d)) return;
-      const pista: Pista = {
-        id: this.siguienteId++,
-        x: det.x,
-        y: det.y,
-        peso: det.peso,
-        pesos: [det.peso],
-        vx: 0,
-        vy: 0,
-        perdida: 0,
-        contada: false,
-      };
+      const heredada = this.recuperar(det);
+      if (heredada) {
+        this.pistas.push(heredada.pista);
+        resultado.push({ pista: heredada.pista, antes: heredada.antes, deteccion: d });
+        return;
+      }
+      const pista = nuevaPista(this.siguienteId++, det);
       this.pistas.push(pista);
-      resultado.push({ pista, antes: null });
+      resultado.push({ pista, antes: null, deteccion: d });
     });
 
     return resultado;
+  }
+
+  /** Busca una pista perdida hace poco que debería estar donde apareció esta detección. */
+  private recuperar(det: Deteccion): { pista: Pista; antes: { x: number; y: number } } | null {
+    let mejor = -1;
+    let mejorD2 = Infinity;
+    this.perdidas.forEach(({ pista, vistoEn }, i) => {
+      const k = this.cuadro - vistoEn;
+      // Donde debía estar si siguió igual, o cerca de donde se vio (si se detuvo o se dio vuelta).
+      const d2 = Math.min(
+        (pista.x + pista.vx * k - det.x) ** 2 + (pista.y + pista.vy * k - det.y) ** 2,
+        (pista.x - det.x) ** 2 + (pista.y - det.y) ** 2,
+      );
+      // Mientras más tiempo perdida, más margen.
+      const margen = this.op.distanciaMaxima * (1 + 0.15 * k);
+      if (d2 <= margen * margen && d2 < mejorD2) {
+        mejor = i;
+        mejorD2 = d2;
+      }
+    });
+    if (mejor < 0) return null;
+    const { pista, vistoEn } = this.perdidas[mejor]!;
+    this.perdidas.splice(mejor, 1);
+    const antes = mover(pista, det, this.cuadro - vistoEn);
+    return { pista, antes };
   }
 
   get activas(): readonly Pista[] {
@@ -83,7 +113,40 @@ export class Rastreador {
 
   reiniciar() {
     this.pistas = [];
+    this.perdidas = [];
   }
+}
+
+function nuevaPista(id: number, det: Deteccion): Pista {
+  return {
+    id,
+    x: det.x,
+    y: det.y,
+    peso: det.peso,
+    pesos: [det.peso],
+    vx: 0,
+    vy: 0,
+    perdida: 0,
+    contada: false,
+    edad: 0,
+    recorrido: [],
+    ladoExterior: null,
+    saldo: 0,
+    aporte: 0,
+    pesoContado: 0,
+  };
+}
+
+/** Lleva la pista a la detección (que está a `cuadros` cuadros de su última posición). */
+function mover(pista: Pista, det: Deteccion, cuadros: number): { x: number; y: number } {
+  const antes = { x: pista.x, y: pista.y };
+  pista.vx = (det.x - pista.x) / cuadros;
+  pista.vy = (det.y - pista.y) / cuadros;
+  pista.x = det.x;
+  pista.y = det.y;
+  anotarPeso(pista, det.peso);
+  pista.perdida = 0;
+  return antes;
 }
 
 /** Cuadros que se miran para el peso de una pista. */

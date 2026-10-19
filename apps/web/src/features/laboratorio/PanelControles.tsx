@@ -37,11 +37,19 @@ export function PanelControles({ controles, onCambio }: Props) {
         onCambio={(v) => cambiar("areaMinima", v)}
       />
       <Deslizador
-        etiqueta="Posición de la línea (%)"
+        etiqueta="Centro de la franja (%)"
         valor={controles.lineaPorcentaje}
         min={5}
         max={95}
         onCambio={(v) => cambiar("lineaPorcentaje", v)}
+      />
+      <Deslizador
+        etiqueta="Ancho de la franja (%)"
+        ayuda="Lo de adentro no cuenta: solo pasar de arriba a abajo. Más ancha aguanta alevinos que se devuelven."
+        valor={controles.franjaAncho}
+        min={0}
+        max={40}
+        onCambio={(v) => cambiar("franjaAncho", v)}
       />
       <Deslizador
         etiqueta="Distancia máxima entre cuadros (px)"

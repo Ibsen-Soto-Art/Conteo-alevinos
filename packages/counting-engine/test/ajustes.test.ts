@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CONTROLES_INICIALES, configuracionMotor, posicionLineaPx, tamanoProceso } from "../src";
+import { CONTROLES_INICIALES, configuracionMotor, franjaPorcentaje, posicionLineaPx, tamanoProceso } from "../src";
 
 describe("ajustes del motor", () => {
   it("reduce el video a 320 px de lado mayor, conservando la proporción y sin agrandar", () => {
@@ -15,9 +15,21 @@ describe("ajustes del motor", () => {
   });
 
   it("pasa los ajustes al motor y aprende el área típica del lote", () => {
-    const c = configuracionMotor({ ...CONTROLES_INICIALES, umbral: 90 }, 80, 120);
+    const c = configuracionMotor({ ...CONTROLES_INICIALES, umbral: 90, lineaPorcentaje: 50 }, 80, 120);
     expect(c.detector).toEqual({ umbral: 90, areaMinima: CONTROLES_INICIALES.areaMinima, areaTipica: null });
     expect(c.posicionLinea).toBe(60);
     expect(c.aprenderAreaTipica).toBe(true);
+  });
+});
+
+describe("franja de conteo en los ajustes", () => {
+  it("por defecto va cerca de la salida (75 %) y mide el 10 % del canal", () => {
+    expect(CONTROLES_INICIALES).toMatchObject({ lineaPorcentaje: 75, franjaAncho: 10 });
+    const c = configuracionMotor(CONTROLES_INICIALES, 180, 320);
+    expect(c.franja).toEqual({ inicio: 0.7 * 320, fin: 0.8 * 320 });
+  });
+
+  it("no se sale del cuadro", () => {
+    expect(franjaPorcentaje({ lineaPorcentaje: 98, franjaAncho: 10 })).toEqual([93, 100]);
   });
 });

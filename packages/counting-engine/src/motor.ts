@@ -1,7 +1,7 @@
 import { areaMediana, detectarManchas, pesoDeMancha, type OpcionesDetector } from "./detector";
 import { ModeloFondo, type EstadoFondo, type OpcionesFondo } from "./fondo";
 import { clasificar, estadisticasDe, perfilEnPixeles, pesoPorForma, unirPedazos, type EstadisticasLote, type PerfilForma, type PerfilPx } from "./forma";
-import { marcarSiCruza } from "./linea";
+import { actualizarConteo, enFlujo, ladoDe, type Franja } from "./franja";
 import { encontrarManchas, type Medidas } from "./manchas";
 import { cerrar } from "./morfologia";
 import { Rastreador, type OpcionesRastreador } from "./rastreador";
@@ -10,8 +10,10 @@ import type { CuadroGris, Deteccion, Pista, SentidoFlujo } from "./tipos";
 export interface ConfiguracionMotor {
   detector: OpcionesDetector;
   rastreador: OpcionesRastreador;
-  /** Posición de la línea de conteo, en píxeles sobre el eje del flujo. */
+  /** Posición de la línea de conteo, en píxeles sobre el eje del flujo (si no hay franja). */
   posicionLinea: number;
+  /** Franja de conteo (dos bordes, en píxeles sobre el eje del flujo). Sin franja, la línea. */
+  franja?: Franja | null;
   sentido: SentidoFlujo;
   /** Si es verdadero y no hay área típica, la aprende de los primeros cuadros. */
   aprenderAreaTipica: boolean;
@@ -44,6 +46,14 @@ export interface ResultadoCuadro {
 }
 
 const MUESTRAS_PARA_AREA = 60;
+/** Cuadros sin moverse para considerar quieta una mancha (una hoja pegada, una marca). */
+const CUADROS_QUIETO = 15;
+
+function estaQuieta(pista: Pista): boolean {
+  const r = pista.recorrido;
+  if (pista.edad < CUADROS_QUIETO || r.length < CUADROS_QUIETO) return false;
+  return Math.max(...r) - Math.min(...r) <= 2;
+}
 const MUESTRAS_PARA_LOTE = 40;
 
 /** Motor de conteo clásico: umbral + seguimiento + cruce de línea. No necesita entrenamiento. */
@@ -78,16 +88,28 @@ export class MotorConteo {
 
     const { detecciones, descartadas } = this.config.perfil || this.fondo ? this.detectar(cuadro) : this.detectarComoAntes(cuadro);
 
+    const { sentido } = this.config;
+    const franja = this.franja;
     let sumados = 0;
-    for (const { pista, antes } of this.rastreador.actualizar(detecciones)) {
-      sumados += marcarSiCruza(pista, antes, this.config.posicionLinea, this.config.sentido);
+    const quietas = new Set<number>();
+    for (const { pista, deteccion } of this.rastreador.actualizar(detecciones)) {
+      pista.edad++;
+      pista.recorrido.push(enFlujo(pista, sentido));
+      if (pista.recorrido.length > CUADROS_QUIETO) pista.recorrido.shift();
+      // Una pista nueva que nace dentro de la franja se supone venida de arriba (no se vio antes).
+      if (pista.ladoExterior === null) pista.ladoExterior = ladoDe(pista, franja, sentido) === "despues" ? "despues" : "antes";
+      if (estaQuieta(pista)) {
+        quietas.add(deteccion);
+        continue;
+      }
+      sumados += actualizarConteo(pista, franja, sentido);
     }
     this.total += sumados;
     return {
       total: this.total,
       sumadosEnEsteCuadro: sumados,
-      detecciones,
-      descartadas,
+      detecciones: detecciones.filter((_, i) => !quietas.has(i)),
+      descartadas: [...descartadas, ...detecciones.filter((_, i) => quietas.has(i)).map((d) => ({ ...d, motivo: "quieto" as const }))],
       pistas: this.rastreador.activas,
       fondo: estadoFondo(),
       perfil: this.perfilPx(),
@@ -145,6 +167,11 @@ export class MotorConteo {
     }
     if (!perfil) this.aprenderArea(detecciones);
     return { detecciones, descartadas };
+  }
+
+  /** La franja de conteo; sin franja, una línea en la posición de siempre. */
+  get franja(): Franja {
+    return this.config.franja ?? { inicio: this.config.posicionLinea, fin: this.config.posicionLinea };
   }
 
   /** El perfil en píxeles con lo mejor que se sepa del tamaño: Prueba de 100, escala o lo aprendido. */

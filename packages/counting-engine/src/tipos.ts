@@ -43,7 +43,19 @@ export interface Pista {
   vy: number;
   /** Cuadros seguidos sin volver a verla. */
   perdida: number;
+  /** Si ya aporta al total (para dibujarla en verde). */
   contada: boolean;
+  /** Cuadros en que se ha visto (también los de la pista perdida que heredó). */
+  edad: number;
+  /** Últimas posiciones sobre el eje del flujo, para saber si avanza con el agua o está quieta. */
+  recorrido: number[];
+  /** Último lado de la franja en que estuvo por fuera: antes (arriba) o después (abajo). */
+  ladoExterior: "antes" | "despues" | null;
+  /** Veces que cruzó la franja con el flujo menos las que la cruzó contra el flujo. */
+  saldo: number;
+  /** Lo que aporta al total ahora: máx(0, saldo) × peso con que se contó. */
+  aporte: number;
+  pesoContado: number;
 }
 
 /** Eje y sentido en que corre el agua por el canal. */

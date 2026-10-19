@@ -25,6 +25,7 @@ export function crearManejador(reloj: () => number = () => performance.now()) {
           motor.actualizarConfiguracion({
             detector: config.detector,
             posicionLinea: config.posicionLinea,
+            franja: config.franja,
             sentido: config.sentido,
             ...(cambiaRastreador ? { rastreador: config.rastreador } : {}),
           });

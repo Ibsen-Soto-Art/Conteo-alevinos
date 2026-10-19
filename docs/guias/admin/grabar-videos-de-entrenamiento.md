@@ -84,7 +84,7 @@ Una fila por video en [`plantilla-videos.csv`](plantilla-videos.csv):
 | `sentido` | Hacia dónde corre el agua en la imagen: `abajo`, `arriba`, `derecha` o `izquierda` | `abajo` |
 | `notas` | Lo que pasó: «se cayó uno», «burbujas al final», … | |
 
-Las cuatro últimas columnas (`umbral`, `area_minima`, `linea`, `distancia`) son para quien programa: son los ajustes del motor que se probaron en `/laboratorio` con ese montaje. Si van vacías se usan los de fábrica.
+Las últimas columnas (`umbral`, `area_minima`, `linea`, `franja_ancho`, `distancia`) son para quien programa: son los ajustes del motor que se probaron en `/laboratorio` con ese montaje. Si van vacías se usan los de fábrica.
 
 Si guarda la plantilla desde Excel en español y queda separada con punto y coma (`;`) en vez de comas, no importa: el script de precisión entiende las dos.
 

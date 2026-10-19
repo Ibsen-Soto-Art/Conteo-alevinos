@@ -7,6 +7,7 @@ export {
   LADO_PROCESO,
   configuracionMotor,
   flujoVertical,
+  franjaPorcentaje,
   posicionLineaPx,
   tamanoProceso,
   type Controles,

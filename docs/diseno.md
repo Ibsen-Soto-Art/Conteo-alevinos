@@ -41,7 +41,7 @@ En este orden:
 
 ## Cámara grande
 
-En «Prueba de 100» y en «Contando» la cámara va arriba, de lado a lado, y ocupa entre el **40 % y el 50 %** del alto de la pantalla, con la línea de conteo y las marcas de lo que detecta el motor (un círculo por mancha y un punto verde por alevino ya contado). Los avisos van encima de la imagen, en las esquinas. Después de la cámara, lo más visible es el número: con `clamp()`, unos 72 px en 360×640 y unos 110 px en 390×844 o más.
+En «Prueba de 100» y en «Contando» la cámara va arriba, de lado a lado, y ocupa entre el **40 % y el 50 %** del alto de la pantalla, con la franja de conteo (dos bordes amarillos) y las marcas de lo que detecta el motor (un círculo por mancha y un punto verde por alevino ya contado). Los avisos van encima de la imagen, en las esquinas. Después de la cámara, lo más visible es el número: con `clamp()`, unos 72 px en 360×640 y unos 110 px en 390×844 o más.
 
 ## Volver a cero
 

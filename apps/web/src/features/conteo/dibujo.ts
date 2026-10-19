@@ -1,4 +1,4 @@
-import { flujoVertical, posicionLineaPx, type Controles, type MensajeDelMotor } from "./protocolo";
+import { flujoVertical, franjaPorcentaje, posicionLineaPx, type Controles, type MensajeDelMotor } from "./protocolo";
 
 type Resultado = Extract<MensajeDelMotor, { tipo: "resultado" }>;
 
@@ -37,18 +37,24 @@ export function dibujarEscena(
   ctx.drawImage(video, 0, 0, W, H);
   if (mascara) ctx.drawImage(mascara, 0, 0, W, H);
 
-  // línea de conteo
-  const linea = posicionLineaPx(controles.lineaPorcentaje, controles.sentido, proceso.ancho, proceso.alto) * k;
+  // franja de conteo: banda sombreada con sus dos bordes
+  const [a, b] = franjaPorcentaje(controles).map((p) => posicionLineaPx(p, controles.sentido, proceso.ancho, proceso.alto) * k);
+  const vertical = flujoVertical(controles.sentido);
+  ctx.fillStyle = "rgb(255 212 0 / 0.12)";
+  if (vertical) ctx.fillRect(0, a!, W, b! - a!);
+  else ctx.fillRect(a!, 0, b! - a!, H);
   ctx.strokeStyle = COLOR_LINEA;
-  ctx.lineWidth = 4;
+  ctx.lineWidth = 3;
   ctx.setLineDash([16, 10]);
   ctx.beginPath();
-  if (flujoVertical(controles.sentido)) {
-    ctx.moveTo(0, linea);
-    ctx.lineTo(W, linea);
-  } else {
-    ctx.moveTo(linea, 0);
-    ctx.lineTo(linea, H);
+  for (const borde of [a!, b!]) {
+    if (vertical) {
+      ctx.moveTo(0, borde);
+      ctx.lineTo(W, borde);
+    } else {
+      ctx.moveTo(borde, 0);
+      ctx.lineTo(borde, H);
+    }
   }
   ctx.stroke();
   ctx.setLineDash([]);
