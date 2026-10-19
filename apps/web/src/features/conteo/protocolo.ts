@@ -5,6 +5,7 @@ import {
   type Deteccion,
   type EstadisticasLote,
   type EstadoFondo,
+  type EventoConteo,
   type Flujo,
   type Franja,
   type PerfilForma,
@@ -146,7 +147,8 @@ export type MensajeAlMotor =
   /** Un cuadro completo para buscar el canal y sus marcas; con `ultimo` contesta el análisis. */
   | { tipo: "canal"; ancho: number; alto: number; rgba: ArrayBuffer; ultimo: boolean }
   | ({ tipo: "configurar" } & ConfiguracionContar)
-  | { tipo: "cuadro"; ancho: number; alto: number; rgba: ArrayBuffer }
+  /** `tiempo`: momento del cuadro en ms (un video procesado cuadro por cuadro lleva el del video). */
+  | { tipo: "cuadro"; ancho: number; alto: number; rgba: ArrayBuffer; tiempo?: number }
   /** Contador a cero para una bolsa nueva; conserva lo aprendido del lote. */
   | { tipo: "reiniciar" }
   /** Lote nuevo: vuelve a aprender el tamaño de un alevino. */
@@ -186,6 +188,8 @@ export type MensajeDelMotor =
       /** Sentido del agua con que cuenta (el elegido, o el que va ganando mientras lo averigua). */
       sentido: SentidoFlujo;
       sentidoDecidido: boolean;
+      /** Cada pista que cambió un total en este cuadro (registro de /laboratorio). */
+      eventos: EventoConteo[];
     }
   | { tipo: "estadisticas"; estadisticas: EstadisticasLote | null; anchoRecorte: number }
   /** Análisis del canal, en píxeles del cuadro completo que se analizó (`ancho` × `alto`). */

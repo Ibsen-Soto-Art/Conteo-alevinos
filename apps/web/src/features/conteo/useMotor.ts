@@ -30,10 +30,10 @@ export function useMotor(alResponder: (r: MensajeDelMotor) => void) {
   }, []);
 
   /** Envía un cuadro si el motor está libre. Devuelve false si lo saltó. */
-  const enviarCuadro = useCallback((ancho: number, alto: number, rgba: ArrayBuffer) => {
+  const enviarCuadro = useCallback((ancho: number, alto: number, rgba: ArrayBuffer, tiempo?: number) => {
     if (!worker.current || ocupado.current) return false;
     ocupado.current = true;
-    worker.current.postMessage({ tipo: "cuadro", ancho, alto, rgba } satisfies MensajeAlMotor, [rgba]);
+    worker.current.postMessage({ tipo: "cuadro", ancho, alto, rgba, ...(tiempo === undefined ? {} : { tiempo }) } satisfies MensajeAlMotor, [rgba]);
     return true;
   }, []);
 

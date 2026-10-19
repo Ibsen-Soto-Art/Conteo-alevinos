@@ -2,11 +2,12 @@ import { PERFILES, perfilPorId } from "@contador/domain";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import "./laboratorio.css";
 import { guardarAjustes, leerAjustes } from "../conteo/ajustes";
-import { Captura, bucleDeCuadros, type Geometria } from "../conteo/captura";
-import { COLOR_DESCARTE, dibujarEscena, pintarMascara } from "../conteo/dibujo";
+import { Captura, bucleDeCuadros, recorrerCuadroPorCuadro, type Geometria } from "../conteo/captura";
+import { COLOR_DESCARTE, dibujarEscena, pintarMascara, type Destello } from "../conteo/dibujo";
 import { type Controles, type MensajeDelMotor } from "../conteo/protocolo";
 import { useMotor } from "../conteo/useMotor";
 import { PanelControles } from "./PanelControles";
+import { registroCsv, resumenRegistro, type FilaRegistro } from "./registro";
 
 type Resultado = Extract<MensajeDelMotor, { tipo: "resultado" }>;
 type Fuente = "ninguna" | "video" | "camara";
@@ -15,6 +16,17 @@ type Fuente = "ninguna" | "video" | "camara";
 const ESCALA_DIBUJO = 2;
 const VELOCIDADES = [1, 0.5, 0.25];
 const SIN_PERFIL = "ninguno";
+/** Resultados del motor que dura en pantalla un «+1 #12». */
+const VIDA_DESTELLO = 40;
+/** Filas que se ven del registro (el CSV las trae todas). */
+const FILAS_A_LA_VISTA = 15;
+
+/** 75,5 s → «01:15.500». */
+function minutos(segundos: number): string {
+  const m = Math.floor(segundos / 60);
+  const s = segundos - m * 60;
+  return `${String(m).padStart(2, "0")}:${s.toFixed(3).padStart(6, "0")}`;
+}
 
 const NOMBRE_FUENTE: Record<Geometria["canal"]["fuente"], string> = {
   marcas: "las 4 marcas",
@@ -64,6 +76,16 @@ export function Laboratorio() {
     sentido: null as { sentido: Resultado["sentido"]; decidido: boolean } | null,
   });
   const [error, setError] = useState<string | null>(null);
+  const [registro, setRegistro] = useState<FilaRegistro[]>([]);
+  const [cpsArchivo, setCpsArchivo] = useState(30);
+  /** Segundo del video procesado cuadro por cuadro; null si no se está haciendo. */
+  const [avancePasos, setAvancePasos] = useState<number | null>(null);
+  const modoPasos = useRef(false);
+  const cpsArchivoRef = useRef(cpsArchivo);
+  cpsArchivoRef.current = cpsArchivo;
+  /** Para el modo cuadro por cuadro: se resuelve con el próximo mensaje del motor. */
+  const esperando = useRef<(() => void) | null>(null);
+  const destellos = useRef<(Destello & { vida: number })[]>([]);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const lienzoRef = useRef<HTMLCanvasElement>(null);
@@ -84,9 +106,25 @@ export function Laboratorio() {
       setError(r.mensaje);
       return;
     }
-    if (r.tipo !== "resultado") return;
+    if (r.tipo !== "resultado") {
+      esperando.current?.();
+      return;
+    }
     resultado.current = r;
     setTotal(r.total);
+    // Registro: quién cambió el contador, cuánto y con qué medidas.
+    destellos.current = destellos.current.map((d) => ({ ...d, vida: d.vida - 1 })).filter((d) => d.vida > 0);
+    if (r.eventos.length > 0) {
+      const video = videoRef.current;
+      const hora = video && !(video.srcObject instanceof MediaStream) ? minutos(video.currentTime) : new Date().toLocaleTimeString("es-CO", { hour12: false }) + `.${String(Date.now() % 1000).padStart(3, "0")}`;
+      const pxPorCm = captura.current?.geometria?.pxPorCmRecorte ?? null;
+      const filas = r.eventos.map((e) => ({ ...e, hora, totalMostrado: r.total, pxPorCm }));
+      setRegistro((antes) => [...antes, ...filas].slice(-5000));
+      for (const e of r.eventos) {
+        const color = e.sentido !== r.sentido ? "#9aa5ad" : e.cambio > 0 ? "#39ff6a" : "#ff5a4f";
+        destellos.current.push({ x: e.x, y: e.y, texto: `${e.cambio > 0 ? "+" : ""}${e.cambio} #${e.id}`, color, vida: VIDA_DESTELLO });
+      }
+    }
     const c = contadorCps.current;
     c.cuadros++;
     const ahora = performance.now();
@@ -103,6 +141,7 @@ export function Laboratorio() {
       });
       contadorCps.current = { desde: ahora, cuadros: 0 };
     }
+    esperando.current?.();
   }, []);
 
   const motor = useMotor(alResponder);
@@ -142,7 +181,13 @@ export function Laboratorio() {
       },
     });
     captura.current = c;
-    const parar = bucleDeCuadros(video, () => c.cuadro());
+    const parar = modoPasos.current
+      ? recorrerCuadroPorCuadro(video, c, esperarRespuesta, cpsArchivoRef.current, setAvancePasos, () => {
+          modoPasos.current = false;
+          setAvancePasos(null);
+          setPausado(true);
+        })
+      : bucleDeCuadros(video, () => c.cuadro());
     return () => {
       parar();
       captura.current = null;
@@ -175,6 +220,7 @@ export function Laboratorio() {
         controlesRef.current,
         proceso,
         g ? marcasEnRecorte(g) : [],
+        destellos.current,
       );
     };
     id = requestAnimationFrame(paso);
@@ -199,6 +245,56 @@ export function Laboratorio() {
     urlVideo.current = null;
   }
 
+  /** Espera la próxima respuesta del motor (o 300 ms, por si ya llegó). */
+  function esperarRespuesta() {
+    return new Promise<void>((listo) => {
+      const tiempo = setTimeout(() => {
+        esperando.current = null;
+        listo();
+      }, 300);
+      esperando.current = () => {
+        clearTimeout(tiempo);
+        esperando.current = null;
+        listo();
+      };
+    });
+  }
+
+  /** Repite el video desde el inicio, cuadro por cuadro, sin saltarse ninguno. */
+  function procesarCuadroPorCuadro() {
+    const video = videoRef.current;
+    if (!video) return;
+    video.pause();
+    modoPasos.current = true;
+    setAvancePasos(0);
+    empezarFuente("video");
+    setPausado(true);
+  }
+
+  function pararCuadroPorCuadro() {
+    modoPasos.current = false;
+    setAvancePasos(null);
+    empezarFuente("video");
+    setPausado(true);
+  }
+
+  async function copiarRegistro() {
+    try {
+      await navigator.clipboard.writeText(registroCsv(registro));
+    } catch {
+      setError("No se pudo copiar: use «Descargar CSV».");
+    }
+  }
+
+  function descargarRegistro() {
+    const url = URL.createObjectURL(new Blob([registroCsv(registro)], { type: "text/csv" }));
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `registro-conteo-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-")}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
   function contadorACero() {
     motor.enviar({ tipo: "reiniciar" });
     resultado.current = null;
@@ -208,6 +304,8 @@ export function Laboratorio() {
   /** Fuente nueva: se vuelve a mirar desde cero (canal, fondo y conteo). */
   function empezarFuente(nueva: Fuente) {
     contadorACero();
+    setRegistro([]);
+    destellos.current = [];
     setFuente("ninguna");
     // un cuadro después, para que el efecto arranque una captura nueva aunque la fuente sea la misma
     requestAnimationFrame(() => setFuente(nueva));
@@ -260,6 +358,8 @@ export function Laboratorio() {
   function desdeElInicio() {
     const video = videoRef.current;
     if (!video) return;
+    modoPasos.current = false;
+    setAvancePasos(null);
     video.currentTime = 0;
     empezarFuente(fuente);
     void video.play();
@@ -330,6 +430,25 @@ export function Laboratorio() {
                   <button type="button" className="boton" onClick={desdeElInicio}>
                     Desde el inicio
                   </button>
+                  {avancePasos === null ? (
+                    <button type="button" className="boton" onClick={procesarCuadroPorCuadro}>
+                      Procesar cuadro por cuadro
+                    </button>
+                  ) : (
+                    <button type="button" className="boton" onClick={pararCuadroPorCuadro}>
+                      Parar ({minutos(avancePasos)})
+                    </button>
+                  )}
+                  <label className="selector">
+                    Cuadros por segundo del video
+                    <select value={cpsArchivo} onChange={(e) => setCpsArchivo(Number(e.target.value))} disabled={avancePasos !== null}>
+                      {[30, 60].map((v) => (
+                        <option key={v} value={v}>
+                          {v}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
                   <label className="selector">
                     Velocidad
                     <select value={velocidad} onChange={(e) => cambiarVelocidad(Number(e.target.value))}>
@@ -347,6 +466,62 @@ export function Laboratorio() {
                 Ver lo que es oscuro
               </label>
             </div>
+          )}
+
+          {fuente !== "ninguna" && (
+            <section className="registro" aria-label="Registro de conteo">
+              <div className="registro-cabecera">
+                <strong>Registro de conteo</strong>
+                <span>{resumir(registro, estado.sentido?.sentido ?? null)}</span>
+              </div>
+              <div className="registro-botones">
+                <button type="button" className="boton" disabled={registro.length === 0} onClick={() => void copiarRegistro()}>
+                  Copiar
+                </button>
+                <button type="button" className="boton" disabled={registro.length === 0} onClick={descargarRegistro}>
+                  Descargar CSV
+                </button>
+                <button type="button" className="boton" disabled={registro.length === 0} onClick={() => setRegistro([])}>
+                  Borrar
+                </button>
+              </div>
+              {registro.length > 0 && (
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Hora</th>
+                      <th>ID</th>
+                      <th>Cambio</th>
+                      <th>Peso</th>
+                      <th>Largo×ancho px</th>
+                      <th>Cuadros</th>
+                      <th>Sentido</th>
+                      <th>Notas</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {registro
+                      .slice(-FILAS_A_LA_VISTA)
+                      .reverse()
+                      .map((f, i) => (
+                        <tr key={`${f.cuadro}-${f.id}-${f.sentido}-${i}`} className={f.sentido !== estado.sentido?.sentido ? "otro-sentido" : ""}>
+                          <td>{f.hora}</td>
+                          <td>#{f.id}</td>
+                          <td>{(f.cambio > 0 ? "+" : "") + f.cambio}</td>
+                          <td>{f.peso}</td>
+                          <td>{f.largo === null ? "—" : `${Math.round(f.largo)}×${Math.round(f.ancho!)}`}</td>
+                          <td>{f.cuadrosSeguidos}</td>
+                          <td>
+                            {f.sentido}
+                            {f.decidido ? "" : "?"}
+                          </td>
+                          <td>{[f.unida && "pedazos unidos", f.nacioEnFranja && "nació en la franja", f.recuperada > 0 && `recuperada ×${f.recuperada}`].filter(Boolean).join(" · ")}</td>
+                        </tr>
+                      ))}
+                  </tbody>
+                </table>
+              )}
+            </section>
           )}
 
           <dl className="estado ficha">
@@ -447,4 +622,21 @@ export function Laboratorio() {
       </div>
     </main>
   );
+}
+
+/** «12 eventos: +3 de más por peso, 2 restas, 1 nacida en la franja…» */
+function resumir(registro: FilaRegistro[], sentido: string | null): string {
+  if (registro.length === 0) return "todavía nada: cada vez que el contador cambie aparece aquí";
+  const r = resumenRegistro(registro, sentido);
+  return [
+    `${registro.length} eventos`,
+    `total ${r.total}`,
+    r.extraPorPeso > 0 && `+${r.extraPorPeso} por peso mayor que 1`,
+    r.restas < 0 && `${r.restas} por regresos`,
+    r.nacidasEnFranja > 0 && `${r.nacidasEnFranja} de pistas nacidas en la franja`,
+    r.recuperadas > 0 && `${r.recuperadas} de pistas recuperadas`,
+    r.unidas > 0 && `${r.unidas} de pedazos unidos`,
+  ]
+    .filter(Boolean)
+    .join(" · ");
 }

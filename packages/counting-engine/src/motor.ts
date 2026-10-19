@@ -6,7 +6,7 @@ import { CUADROS_PERSISTENCIA, actualizarConteo, enFlujo, ladoDe, type Franja } 
 import { encontrarManchas, type Medidas } from "./manchas";
 import { cerrar } from "./morfologia";
 import { Rastreador, type OpcionesRastreador } from "./rastreador";
-import type { CuadroGris, Deteccion, Pista, SentidoFlujo } from "./tipos";
+import type { CuadroGris, Deteccion, EventoConteo, Pista, SentidoFlujo } from "./tipos";
 
 export interface ConfiguracionMotor {
   detector: OpcionesDetector;
@@ -61,6 +61,8 @@ export interface ResultadoCuadro {
   sentido: SentidoFlujo;
   /** Con sentido automático: si ya sabe hacia dónde corre el agua. */
   sentidoDecidido: boolean;
+  /** Cada pista que cambió un total en este cuadro (de los dos sentidos mientras averigua). */
+  eventos: EventoConteo[];
 }
 
 const MUESTRAS_PARA_AREA = 60;
@@ -113,6 +115,10 @@ export class MotorConteo {
   private muestrasLote: Medidas[] = [];
   private loteAprendido: EstadisticasLote | null = null;
   private medidorFlujo = new MedidorFlujo();
+  /** Cuadros procesados y eventos del cuadro actual (registro de conteo). */
+  private numeroCuadro = 0;
+  private tiempoCuadro: number | null = null;
+  private eventos: EventoConteo[] = [];
   /** Momentos (ms) de los últimos cuadros, para saber cuántos por segundo se procesan. */
   private tiempos: number[] = [];
   /** Largo del canal sobre el eje del flujo en el último cuadro (para no pasarse con la franja). */
@@ -161,6 +167,9 @@ export class MotorConteo {
   /** `tiempo`: momento del cuadro en ms (para medir cuadros por segundo y la velocidad en px/s). */
   procesar(cuadro: CuadroGris, tiempo?: number): ResultadoCuadro {
     const estadoFondo = () => (this.fondo ? { estado: this.fondo.estado, progreso: this.fondo.progreso } : null);
+    this.numeroCuadro++;
+    this.tiempoCuadro = tiempo ?? null;
+    this.eventos = [];
     if (tiempo !== undefined) {
       this.tiempos.push(tiempo);
       if (this.tiempos.length > 30) this.tiempos.shift();
@@ -198,6 +207,7 @@ export class MotorConteo {
       perfil: this.perfilPx(),
       sentido: elegido.sentido,
       sentidoDecidido: this.sentidoDecidido,
+      eventos: this.eventos,
     };
   }
 
@@ -210,7 +220,11 @@ export class MotorConteo {
       pista.recorrido.push(enFlujo(pista, c.sentido));
       if (pista.recorrido.length > CUADROS_QUIETO) pista.recorrido.shift();
       // Una pista nueva que nace dentro de la franja se supone venida de arriba (no se vio antes).
-      if (pista.ladoExterior === null) pista.ladoExterior = ladoDe(pista, franja, c.sentido) === "despues" ? "despues" : "antes";
+      if (pista.ladoExterior === null) {
+        const lado = ladoDe(pista, franja, c.sentido);
+        pista.nacioEnFranja = lado === "dentro";
+        pista.ladoExterior = lado === "despues" ? "despues" : "antes";
+      }
       if (estaQuieta(pista)) {
         c.quietas.add(deteccion);
         continue;
@@ -218,7 +232,31 @@ export class MotorConteo {
       const cambio = actualizarConteo(pista, franja, c.sentido);
       c.total += cambio;
       if (cambio > 0) medirContado(pista, c.medidas);
+      if (cambio !== 0) this.eventos.push(this.evento(pista, cambio, c));
     }
+  }
+
+  private evento(pista: Pista, cambio: number, c: Conteo): EventoConteo {
+    const de = (k: "largo" | "ancho" | "area") => (pista.medidas.length ? mediana(pista.medidas.map((m) => m[k])) : null);
+    return {
+      cuadro: this.numeroCuadro,
+      tiempo: this.tiempoCuadro,
+      id: pista.id,
+      x: pista.x,
+      y: pista.y,
+      cambio,
+      peso: pista.pesoContado,
+      pesos: [...pista.pesos],
+      largo: de("largo"),
+      ancho: de("ancho"),
+      area: de("area"),
+      cuadrosSeguidos: pista.edad,
+      sentido: c.sentido,
+      decidido: this.conteos.length === 1,
+      unida: pista.unida,
+      nacioEnFranja: pista.nacioEnFranja,
+      recuperada: pista.recuperada,
+    };
   }
 
   /**
@@ -430,6 +468,7 @@ function aDeteccion(m: Medidas, peso: number): Deteccion {
     relacion: m.relacion,
     solidez: m.solidez,
     cuerpos: m.cuerpos,
+    pedazos: m.pedazos,
   };
 }
 

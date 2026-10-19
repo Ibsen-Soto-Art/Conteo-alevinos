@@ -27,6 +27,30 @@ export function etiquetaMancha(d: Deteccion): string {
   return `${medidas} ·${d.peso}`;
 }
 
+/** Un «+1 #12» que se dibuja un momento donde una pista cambió el contador. */
+export interface Destello {
+  x: number;
+  y: number;
+  texto: string;
+  /** Verde si sumó, rojo si restó; gris si fue del sentido que no se muestra. */
+  color: string;
+}
+
+/** Recuadro girado de una mancha (largo × ancho en su ángulo); sin medidas, un círculo de su área. */
+function recuadro(ctx: CanvasRenderingContext2D, d: Deteccion, k: number) {
+  ctx.beginPath();
+  if (d.largo !== undefined && d.ancho !== undefined && d.angulo !== undefined) {
+    ctx.save();
+    ctx.translate(d.x * k, d.y * k);
+    ctx.rotate(d.angulo);
+    ctx.rect((-d.largo / 2) * k - 2, (-d.ancho / 2) * k - 2, d.largo * k + 4, d.ancho * k + 4);
+    ctx.restore();
+  } else {
+    ctx.arc(d.x * k, d.y * k, Math.max(4, Math.sqrt(d.area / Math.PI) * k + 3), 0, Math.PI * 2);
+  }
+  ctx.stroke();
+}
+
 /**
  * Marca en rojo los píxeles que el detector ve como alevino (más oscuros que el umbral),
  * para ajustar el umbral a ojo. Usa los mismos pesos de gris que el motor.
@@ -55,6 +79,7 @@ export function dibujarEscena(
   controles: Controles,
   proceso: { ancho: number; alto: number },
   marcas: { x: number; y: number; lado: number }[] = [],
+  destellos: Destello[] = [],
 ) {
   const { width: W, height: H } = ctx.canvas;
   const k = W / proceso.ancho;
@@ -98,29 +123,23 @@ export function dibujarEscena(
 
   ctx.font = "bold 13px system-ui, sans-serif";
   ctx.lineWidth = 2;
-  // descartadas: punteadas, del color de su motivo y con el motivo escrito
+  // descartadas: recuadro punteado, del color de su motivo y con el motivo escrito
   ctx.setLineDash([4, 4]);
   for (const d of resultado.descartadas) {
     const color = COLOR_DESCARTE[d.motivo ?? "forma"];
-    const r = Math.max(4, Math.sqrt(d.area / Math.PI) * k + 3);
     ctx.strokeStyle = color;
-    ctx.beginPath();
-    ctx.arc(d.x * k, d.y * k, r, 0, Math.PI * 2);
-    ctx.stroke();
+    recuadro(ctx, d, k);
     ctx.fillStyle = color;
-    ctx.fillText(etiquetaMancha(d), d.x * k + r + 3, d.y * k + 4);
+    ctx.fillText(etiquetaMancha(d), d.x * k + ((d.largo ?? 8) / 2) * k + 6, d.y * k + 4);
   }
   ctx.setLineDash([]);
 
-  // aceptadas: un círculo del tamaño de su área, con largo×ancho y peso
+  // aceptadas: recuadro con largo×ancho y peso
   for (const d of resultado.detecciones) {
-    const r = Math.max(4, Math.sqrt(d.area / Math.PI) * k + 3);
     ctx.strokeStyle = COLOR_MANCHA;
-    ctx.beginPath();
-    ctx.arc(d.x * k, d.y * k, r, 0, Math.PI * 2);
-    ctx.stroke();
+    recuadro(ctx, d, k);
     ctx.fillStyle = COLOR_MANCHA;
-    ctx.fillText(etiquetaMancha(d), d.x * k + r + 3, d.y * k + 4);
+    ctx.fillText(etiquetaMancha(d), d.x * k + ((d.largo ?? 8) / 2) * k + 6, d.y * k + 4);
   }
 
   // pistas: naranja mientras viajan, verde cuando ya se contaron
@@ -130,6 +149,16 @@ export function dibujarEscena(
     ctx.beginPath();
     ctx.arc(p.x * k, p.y * k, 4, 0, Math.PI * 2);
     ctx.fill();
-    ctx.fillText(p.peso > 1 ? `${p.id}×${p.peso}` : String(p.id), p.x * k + 7, p.y * k - 7);
+    ctx.fillText(p.peso > 1 ? `#${p.id}×${p.peso}` : `#${p.id}`, p.x * k + 7, p.y * k - 7);
+  }
+
+  // destellos: quién cambió el contador y cuánto
+  ctx.font = "bold 22px system-ui, sans-serif";
+  ctx.lineWidth = 4;
+  ctx.strokeStyle = "rgb(0 0 0 / 0.7)";
+  for (const d of destellos) {
+    ctx.strokeText(d.texto, d.x * k - 20, d.y * k - 18);
+    ctx.fillStyle = d.color;
+    ctx.fillText(d.texto, d.x * k - 20, d.y * k - 18);
   }
 }

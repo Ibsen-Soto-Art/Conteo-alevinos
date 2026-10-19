@@ -24,3 +24,7 @@ export const VIDEO_PECES = {
 export const PECES_POR_VUELTA = VIDEO_PECES.filas * VIDEO_PECES.porFila;
 
 export const VIDEO_CAMARA = resolve(import.meta.dirname, ".generado/peces.mjpeg");
+
+/** Video del canal para /laboratorio: 4 marcas, 3 s vacío y 6 alevinos que bajan (se genera en preparar.ts). */
+export const VIDEO_CANAL = resolve(import.meta.dirname, ".generado/canal.webm");
+export const PECES_CANAL = 6;

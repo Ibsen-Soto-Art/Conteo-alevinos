@@ -106,6 +106,7 @@ export class Rastreador {
     if (mejor < 0) return null;
     const { pista, vistoEn } = this.perdidas[mejor]!;
     this.perdidas.splice(mejor, 1);
+    pista.recuperada++;
     const antes = mover(pista, det, this.cuadro - vistoEn);
     return { pista, antes };
   }
@@ -142,6 +143,9 @@ function nuevaPista(id: number, det: Deteccion): Pista {
     pesoContado: 0,
     medidas: [],
     medida: false,
+    unida: aceptada && (det.pedazos ?? 1) > 1,
+    nacioEnFranja: false,
+    recuperada: 0,
   };
 }
 
@@ -158,6 +162,7 @@ function mover(pista: Pista, det: Deteccion, cuadros: number): { x: number; y: n
   if (pista.aceptadas.length > CUADROS_PESO) pista.aceptadas.shift();
   pista.seguidos = aceptada ? pista.seguidos + 1 : 0;
   if (aceptada) {
+    if ((det.pedazos ?? 1) > 1) pista.unida = true;
     anotarPeso(pista, det.peso);
     anotarMedidas(pista, det);
   }

@@ -28,6 +28,8 @@ export interface Deteccion {
   cuerpos?: number;
   /** Si se descartó, por qué: tamaño, forma, burbuja o quieto. */
   motivo?: "tamano" | "forma" | "burbuja" | "quieto";
+  /** Manchas que se unieron para formarla (un pez partido en pedazos); 1 si es una sola. */
+  pedazos?: number;
 }
 
 export interface Pista {
@@ -64,6 +66,41 @@ export interface Pista {
   medidas: { largo: number; ancho: number; area: number; relacion: number }[];
   /** Si ya se usaron sus medidas para el lote. */
   medida: boolean;
+  /** Para el registro: alguna vez fue pedazos unidos. */
+  unida: boolean;
+  /** Para el registro: nació dentro de la franja (no se vio llegar). */
+  nacioEnFranja: boolean;
+  /** Para el registro: veces que heredó una pista perdida. */
+  recuperada: number;
+}
+
+/** Un cambio del total causado por una pista (para el registro de /laboratorio). */
+export interface EventoConteo {
+  /** Número del cuadro procesado (desde que se creó el motor). */
+  cuadro: number;
+  /** Momento del cuadro en ms, si se sabe. */
+  tiempo: number | null;
+  id: number;
+  /** Dónde estaba la pista (px del recorte). */
+  x: number;
+  y: number;
+  /** Lo que cambió el total de su sentido: +1, +2, −1… */
+  cambio: number;
+  /** Peso con que se contó (alevinos que lleva la pista) y los pesos de sus últimos cuadros. */
+  peso: number;
+  pesos: number[];
+  /** Medianas de sus últimas medidas (px del recorte); null sin perfil. */
+  largo: number | null;
+  ancho: number | null;
+  area: number | null;
+  /** Cuadros que se ha seguido la pista. */
+  cuadrosSeguidos: number;
+  /** Sentido del conteo en que pasó y si ya estaba decidido. */
+  sentido: SentidoFlujo;
+  decidido: boolean;
+  unida: boolean;
+  nacioEnFranja: boolean;
+  recuperada: number;
 }
 
 /** Eje y sentido en que corre el agua por el canal. */

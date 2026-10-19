@@ -27,7 +27,7 @@ export {
 
 export interface EnvioMotor {
   enviar(msg: MensajeAlMotor, transferir?: Transferable[]): void;
-  enviarCuadro(ancho: number, alto: number, rgba: ArrayBuffer): boolean;
+  enviarCuadro(ancho: number, alto: number, rgba: ArrayBuffer, tiempo?: number): boolean;
   libre(): boolean;
 }
 
@@ -68,10 +68,14 @@ export class Captura {
     return this.geometriaActual;
   }
 
-  /** Llamar con cada cuadro nuevo del video. */
-  cuadro() {
+  /**
+   * Llamar con cada cuadro nuevo del video. Dice qué hizo: mandó un cuadro para buscar el canal,
+   * uno para contar, o nada (esperando el canal, motor ocupado, video sin cargar).
+   * `tiempo`: momento del cuadro en ms (para procesar un video cuadro por cuadro).
+   */
+  cuadro(tiempo?: number): "canal" | "contar" | "nada" {
     const v = this.video;
-    if (v.readyState < 2 || v.videoWidth === 0) return;
+    if (v.readyState < 2 || v.videoWidth === 0) return "nada";
     if (this.fase === "canal") {
       const t = tamanoProceso(v.videoWidth, v.videoHeight, LADO_ANALISIS);
       this.dibujar(0, 0, v.videoWidth, v.videoHeight, t.ancho, t.alto);
@@ -79,15 +83,15 @@ export class Captura {
       const ultimo = ++this.enviados >= CUADROS_ANALISIS;
       this.motor.enviar({ tipo: "canal", ancho: t.ancho, alto: t.alto, rgba: img.data.buffer, ultimo }, [img.data.buffer]);
       if (ultimo) this.fase = "esperandoCanal";
-      return;
+      return "canal";
     }
     const g = this.geometriaActual;
-    if (this.fase !== "contar" || !g || !this.motor.libre()) return;
+    if (this.fase !== "contar" || !g || !this.motor.libre()) return "nada";
     const { zona } = g.canal;
     this.dibujar(zona.x, zona.y, zona.ancho, zona.alto, g.recorte.ancho, g.recorte.alto);
     const img = this.ctx.getImageData(0, 0, g.recorte.ancho, g.recorte.alto);
     this.op.alRecorte?.(img);
-    this.motor.enviarCuadro(g.recorte.ancho, g.recorte.alto, img.data.buffer);
+    return this.motor.enviarCuadro(g.recorte.ancho, g.recorte.alto, img.data.buffer, tiempo) ? "contar" : "nada";
   }
 
   /** Llamar con cada respuesta del motor. */
@@ -139,6 +143,48 @@ export class Captura {
     }
     this.ctx.drawImage(this.video, sx, sy, sw, sh, 0, 0, ancho, alto);
   }
+}
+
+/**
+ * Procesa un video grabado cuadro por cuadro, sin saltarse ninguno y siempre igual: adelanta el
+ * video de a un cuadro (`cuadrosPorSegundo`), manda el cuadro y espera la respuesta del motor
+ * antes de seguir. `esperarRespuesta` se resuelve con el próximo mensaje del motor.
+ * Devuelve la función para parar.
+ */
+export function recorrerCuadroPorCuadro(
+  video: HTMLVideoElement,
+  captura: Pick<Captura, "cuadro">,
+  esperarRespuesta: () => Promise<void>,
+  cuadrosPorSegundo: number,
+  alAvanzar?: (segundo: number) => void,
+  alTerminar?: () => void,
+): () => void {
+  let vivo = true;
+  const ir = (t: number) =>
+    new Promise<void>((listo) => {
+      video.addEventListener("seeked", () => listo(), { once: true });
+      video.currentTime = t;
+    });
+  void (async () => {
+    video.pause();
+    const paso = 1 / cuadrosPorSegundo;
+    for (let i = 0; vivo && i * paso <= video.duration; i++) {
+      const t = i * paso;
+      await ir(t);
+      // Mientras busca el canal el motor contesta solo al último cuadro; si está ocupado, se espera.
+      for (let intento = 0; vivo && intento < 50; intento++) {
+        const hizo = captura.cuadro(t * 1000);
+        if (hizo === "canal") break;
+        await esperarRespuesta();
+        if (hizo === "contar") break;
+      }
+      alAvanzar?.(t);
+    }
+    if (vivo) alTerminar?.();
+  })();
+  return () => {
+    vivo = false;
+  };
 }
 
 /**

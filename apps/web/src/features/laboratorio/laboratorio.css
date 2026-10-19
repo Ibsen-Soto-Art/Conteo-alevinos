@@ -155,7 +155,13 @@
   color: var(--texto-suave);
 }
 
+/* Sin la píldora blanca de `.estado` de la app (ícono + palabra), que tapaba la ficha. */
 .laboratorio .estado {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  white-space: normal;
   margin: 0;
   font-size: 0.85rem;
   color: var(--texto-suave);
@@ -272,4 +278,52 @@ html.modo-laboratorio body {
 .laboratorio .leyenda span {
   font-weight: 700;
   font-size: 1.1rem;
+}
+
+/* ---------- registro de conteo ---------- */
+
+.laboratorio .registro {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  background: var(--superficie);
+  border: 2px solid var(--borde);
+  border-radius: 12px;
+  font-size: 0.85rem;
+}
+
+.laboratorio .registro-cabecera {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  align-items: baseline;
+}
+
+.laboratorio .registro-cabecera span {
+  color: var(--texto-suave);
+}
+
+.laboratorio .registro-botones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.laboratorio .registro table {
+  width: 100%;
+  border-collapse: collapse;
+  display: block;
+  overflow-x: auto;
+}
+
+.laboratorio .registro th,
+.laboratorio .registro td {
+  padding: 2px 8px;
+  text-align: left;
+  white-space: nowrap;
+  border-bottom: 1px solid var(--borde);
+}
+
+.laboratorio .registro .otro-sentido {
+  color: #9aa5ad;
 }

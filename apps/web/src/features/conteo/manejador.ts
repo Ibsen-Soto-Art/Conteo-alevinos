@@ -59,7 +59,7 @@ export function crearManejador(reloj: () => number = () => performance.now()) {
         }
         const inicio = reloj();
         const cuadro = aGris(new Uint8ClampedArray(msg.rgba), msg.ancho, msg.alto, gris);
-        const r = motor.procesar(cuadro, inicio);
+        const r = motor.procesar(cuadro, msg.tiempo ?? inicio);
         return {
           tipo: "resultado",
           total: r.total,
@@ -79,6 +79,7 @@ export function crearManejador(reloj: () => number = () => performance.now()) {
           cuadrosPorSegundo: motor.cuadrosPorSegundo,
           sentido: r.sentido,
           sentidoDecidido: r.sentidoDecidido,
+          eventos: r.eventos,
         };
       }
       case "reiniciar":
