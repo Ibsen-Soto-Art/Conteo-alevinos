@@ -48,22 +48,6 @@ export function Contando() {
     <Pantalla
       clasePie="pie-columna"
       className={`contando ${cerca ? "contando-cerca" : ""} ${llego ? "contando-llego" : ""}`}
-      cabecera={
-        <VistaCamara
-          className="camara-grande camara-arriba"
-          videoRef={vivo.videoRef}
-          estado={vivo.estado}
-          ajustes={vivo.ajustes}
-          geometria={vivo.geometria}
-          onReintentar={vivo.reintentar}
-        >
-          <AvisoLuz luz={vivo.luz} className="camara-luz" />
-          <AvisoFlujo flujo={vivo.flujo} className="camara-flujo" />
-          <span className="estado camara-bolsa">
-            <IconoBolsa /> Bolsa {numeroBolsaAbierta(estado)}
-          </span>
-        </VistaCamara>
-      }
       pie={
         <>
           <div className="fila-secundaria">
@@ -105,35 +89,51 @@ export function Contando() {
         </>
       }
     >
-      <div className="contador">
-        <output className="contador-numero" aria-live="polite" data-largo={formatear(enBolsa).length}>
-          {formatear(enBolsa)}
-        </output>
-        <span className="contador-de">{meta === null ? "alevinos en esta bolsa" : `de ${formatear(meta)}`}</span>
-        {meta !== null && (
-          <div className="avance" role="progressbar" aria-valuemin={0} aria-valuemax={meta} aria-valuenow={enBolsa}>
-            <span style={{ width: `${avance * 100}%` }} />
-          </div>
-        )}
-        {pausado ? (
-          <p className="estado-grande estado-aviso">
-            <IconoPausa /> En pausa: no está contando
+      {/* La cámara ocupa todo el centro y muestra el canal entero; el número va encima, abajo. */}
+      <VistaCamara
+        className="camara-completa"
+        encuadre="canal"
+        videoRef={vivo.videoRef}
+        estado={vivo.estado}
+        ajustes={vivo.ajustes}
+        geometria={vivo.geometria}
+        onReintentar={vivo.reintentar}
+      >
+        <AvisoLuz luz={vivo.luz} className="camara-luz" />
+        <AvisoFlujo flujo={vivo.flujo} className="camara-flujo" />
+        <span className="estado camara-bolsa">
+          <IconoBolsa /> Bolsa {numeroBolsaAbierta(estado)}
+        </span>
+        <div className="contador camara-banda">
+          <output className="contador-numero" aria-live="polite" data-largo={formatear(enBolsa).length}>
+            {formatear(enBolsa)}
+          </output>
+          <span className="contador-de">{meta === null ? "alevinos en esta bolsa" : `de ${formatear(meta)}`}</span>
+          {meta !== null && (
+            <div className="avance" role="progressbar" aria-valuemin={0} aria-valuemax={meta} aria-valuenow={enBolsa}>
+              <span style={{ width: `${avance * 100}%` }} />
+            </div>
+          )}
+          {pausado ? (
+            <p className="estado-grande estado-aviso">
+              <IconoPausa /> En pausa: no está contando
+            </p>
+          ) : llego ? (
+            <p className="estado-grande estado-exito">
+              <IconoChulo /> ¡Llegó! Cierre la compuerta
+            </p>
+          ) : cerca ? (
+            <p className="estado-grande estado-aviso">
+              <IconoAviso /> Faltan {formatear(faltan!)}: más despacio
+            </p>
+          ) : (
+            faltan !== null && <p className="faltan">Faltan {formatear(faltan)}</p>
+          )}
+          <p className="total-hoy">
+            Total hoy: <strong>{formatear(totalHoy(estado))}</strong>
           </p>
-        ) : llego ? (
-          <p className="estado-grande estado-exito">
-            <IconoChulo /> ¡Llegó! Cierre la compuerta
-          </p>
-        ) : cerca ? (
-          <p className="estado-grande estado-aviso">
-            <IconoAviso /> Faltan {formatear(faltan!)}: más despacio
-          </p>
-        ) : (
-          faltan !== null && <p className="faltan">Faltan {formatear(faltan)}</p>
-        )}
-      </div>
-      <p className="total-hoy">
-        Total hoy: <strong>{formatear(totalHoy(estado))}</strong>
-      </p>
+        </div>
+      </VistaCamara>
     </Pantalla>
   );
 }

@@ -79,6 +79,41 @@ export function posicionParaVerFranja(
     : { x: (zona.x + centro * zona.ancho) / video.ancho, y: cy };
 }
 
+/** Cómo se pone el video en la vista: punto de la vista = punto del video × escala + (dx, dy). */
+export interface Encuadre {
+  escala: number;
+  dx: number;
+  dy: number;
+}
+
+/** Como `object-fit: cover` con `object-position: posicion` (fracciones de 0 a 1). */
+export function encuadreCubrir(
+  video: { ancho: number; alto: number },
+  vista: { ancho: number; alto: number },
+  posicion: { x: number; y: number } = { x: 0.5, y: 0.5 },
+): Encuadre {
+  const escala = Math.max(vista.ancho / video.ancho, vista.alto / video.alto);
+  return { escala, dx: -(video.ancho * escala - vista.ancho) * posicion.x, dy: -(video.alto * escala - vista.alto) * posicion.y };
+}
+
+/**
+ * Todo el canal (`zona`, en píxeles del video) a la vista, lo más grande posible y centrado dentro
+ * del espacio libre: la vista menos `arriba` y `abajo` px tapados por avisos y por el contador.
+ */
+export function encuadreCanal(
+  zona: { x: number; y: number; ancho: number; alto: number },
+  vista: { ancho: number; alto: number },
+  { arriba = 0, abajo = 0 }: { arriba?: number; abajo?: number } = {},
+): Encuadre {
+  const libre = Math.max(1, vista.alto - arriba - abajo);
+  const escala = Math.min(vista.ancho / zona.ancho, libre / zona.alto);
+  return {
+    escala,
+    dx: vista.ancho / 2 - (zona.x + zona.ancho / 2) * escala,
+    dy: arriba + libre / 2 - (zona.y + zona.alto / 2) * escala,
+  };
+}
+
 /** Lo mínimo de cada pista que la página necesita para dibujarla. */
 export interface PistaVista {
   id: number;

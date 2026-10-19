@@ -1,8 +1,9 @@
 import { expect, test, type Page } from "@playwright/test";
 
 /**
- * La cámara se ve grande (entre el 40 % y el 50 % del alto, de lado a lado) y el número
- * es lo más visible después de ella: ~72 px en 360×640 y ~110 px en pantallas de 844 o más.
+ * Prueba de 100: la cámara se ve grande (entre el 40 % y el 50 % del alto, de lado a lado) y el
+ * número es lo más visible después de ella: ~72 px en 360×640 y ~110 px en pantallas de 844 o más.
+ * Contando: la cámara ocupa casi toda la pantalla y el número va encima de la imagen.
  */
 
 async function medidas(page: Page) {
@@ -30,13 +31,20 @@ function revisar(m: Awaited<ReturnType<typeof medidas>>) {
   expect(m.letra).toBeLessThanOrEqual(120);
 }
 
-test("Contando: cámara grande y número grande", async ({ page }) => {
+test("Contando: la cámara ocupa casi toda la pantalla y el número va encima", async ({ page }) => {
   await page.goto("/?demo#/contando");
-  revisar(await medidas(page));
-  // Los avisos van encima de la imagen, no gastan espacio aparte.
-  const camara = await page.locator(".camara").boundingBox();
-  const bolsa = await page.locator(".camara-bolsa").boundingBox();
-  expect(bolsa!.y + bolsa!.height).toBeLessThanOrEqual(camara!.y + camara!.height);
+  const m = await medidas(page);
+  expect(m.camara.alto / m.alto, "la cámara ocupa al menos el 65 % del alto").toBeGreaterThanOrEqual(0.65);
+  expect(m.camara.ancho, "la cámara va de lado a lado").toBeCloseTo(m.ancho, 0);
+  expect(m.letra).toBeGreaterThanOrEqual(m.alto <= 640 ? 56 : 90);
+  // Los avisos y el contador van encima de la imagen, no gastan espacio aparte.
+  const camara = (await page.locator(".camara").boundingBox())!;
+  const bolsa = (await page.locator(".camara-bolsa").boundingBox())!;
+  const banda = (await page.locator(".camara-banda").boundingBox())!;
+  expect(bolsa.y + bolsa.height).toBeLessThanOrEqual(camara.y + camara.height);
+  expect(banda.y + banda.height).toBeLessThanOrEqual(camara.y + camara.height);
+  // Sobre el contador queda al menos el 40 % de la cámara para ver el canal.
+  expect((banda.y - camara.y) / camara.height).toBeGreaterThanOrEqual(0.4);
 });
 
 test("Prueba de 100: cámara grande y número grande", async ({ page }) => {

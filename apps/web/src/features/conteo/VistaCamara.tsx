@@ -3,7 +3,7 @@ import { useMotorCompartido } from "../../app/MotorContexto";
 import type { EstadoFlujo } from "@contador/counting-engine";
 import { IconoAviso, IconoChulo, IconoProblema, IconoSol } from "../../shared/ui/Iconos";
 import { recorteAVideo, type Geometria } from "./captura";
-import { flujoVertical, posicionParaVerFranja, puntoEnVista, type Controles, type MensajeDelMotor } from "./protocolo";
+import { encuadreCanal, encuadreCubrir, flujoVertical, posicionParaVerFranja, type Controles, type Encuadre, type MensajeDelMotor } from "./protocolo";
 import type { EstadoCamara, Luz } from "./useConteoEnVivo";
 
 const MENSAJES: Record<Exclude<EstadoCamara, "lista">, string> = {
@@ -23,17 +23,9 @@ type Punto = { x: number; y: number };
 /**
  * Dibuja encima de la imagen lo que ve el motor, donde de verdad lo ve: la franja de conteo,
  * un círculo por mancha y un punto verde por alevino contado. Todo viene en píxeles del
- * recorte del canal; se pasa a píxeles del video y luego a la vista (`object-fit: cover`).
+ * recorte del canal; se pasa a píxeles del video y luego a la vista con el encuadre.
  */
-function dibujarMarcas(
-  lienzo: HTMLCanvasElement,
-  r: Resultado,
-  g: Geometria,
-  video: { ancho: number; alto: number },
-  vista: { ancho: number; alto: number },
-  sentido: Controles["sentido"],
-  posicion: { x: number; y: number },
-) {
+function dibujarMarcas(lienzo: HTMLCanvasElement, r: Resultado, g: Geometria, vista: { ancho: number; alto: number }, e: Encuadre) {
   const ctx = lienzo.getContext("2d");
   if (!ctx || r.ancho !== g.recorte.ancho) return;
   const ppp = window.devicePixelRatio || 1;
@@ -45,7 +37,7 @@ function dibujarMarcas(
   ctx.clearRect(0, 0, vista.ancho, vista.alto);
   const aVista = (x: number, y: number) => {
     const v = recorteAVideo(x, y, g);
-    return puntoEnVista(v.x, v.y, video, vista, posicion);
+    return { x: v.x * e.escala + e.dx, y: v.y * e.escala + e.dy };
   };
 
   // Franja: los dos bordes de un lado al otro del recorte, con el medio sombreado.
@@ -81,7 +73,7 @@ function dibujarMarcas(
   for (const d of r.detecciones) {
     const p = aVista(d.x, d.y);
     ctx.beginPath();
-    ctx.arc(p.x, p.y, Math.sqrt(d.area / Math.PI) * p.escala * escala + 5, 0, Math.PI * 2);
+    ctx.arc(p.x, p.y, Math.sqrt(d.area / Math.PI) * e.escala * escala + 5, 0, Math.PI * 2);
     ctx.stroke();
   }
   ctx.fillStyle = COLOR_CONTADO;
@@ -94,13 +86,19 @@ function dibujarMarcas(
   }
 }
 
-/** La cámara con la franja de conteo y las marcas de lo que detecta el motor. */
+/**
+ * La cámara con la franja de conteo y las marcas de lo que detecta el motor.
+ * - encuadre «franja»: la imagen llena la vista y se corre para que se vea la franja.
+ * - encuadre «canal»: se ve el canal entero, entre los avisos de arriba y lo que vaya abajo
+ *   sobre la imagen (el elemento con la clase `camara-banda`, p. ej. el contador).
+ */
 export function VistaCamara({
   videoRef,
   estado,
   ajustes,
   geometria,
   onReintentar,
+  encuadre: modo = "franja",
   className = "",
   children,
 }: {
@@ -109,6 +107,7 @@ export function VistaCamara({
   ajustes: Controles;
   geometria: Geometria | null;
   onReintentar: () => void;
+  encuadre?: "franja" | "canal";
   className?: string;
   children?: ReactNode;
 }) {
@@ -117,16 +116,29 @@ export function VistaCamara({
   const motor = useMotorCompartido();
   const [vista, setVista] = useState({ ancho: 0, alto: 0 });
   const [video, setVideo] = useState({ ancho: 0, alto: 0 });
+  /** Lo tapado arriba (avisos) y abajo (la banda), en px, para el encuadre «canal». */
+  const [tapado, setTapado] = useState({ arriba: 0, abajo: 0 });
 
   useEffect(() => {
     const el = caja.current;
     if (!el) return;
-    const medir = () => setVista({ ancho: el.clientWidth, alto: el.clientHeight });
+    const medir = () => {
+      setVista({ ancho: el.clientWidth, alto: el.clientHeight });
+      const marco = el.getBoundingClientRect();
+      const banda = el.querySelector(".camara-banda")?.getBoundingClientRect();
+      const aviso = el.querySelector(".camara-bolsa, .camara-luz")?.getBoundingClientRect();
+      // Arriba van dos filas de avisos (luz y bolsa; debajo, el flujo cuando aparece).
+      const arriba = aviso ? aviso.bottom - marco.top + aviso.height + 12 : 0;
+      const abajo = banda ? marco.bottom - banda.top : 0;
+      setTapado((t) => (t.arriba === arriba && t.abajo === abajo ? t : { arriba, abajo }));
+    };
     medir();
     const observador = new ResizeObserver(medir);
     observador.observe(el);
+    const banda = el.querySelector(".camara-banda");
+    if (banda) observador.observe(banda);
     return () => observador.disconnect();
-  }, []);
+  }, [estado]);
 
   // Dónde está la franja que usa el motor (cambia si averigua que el agua corre al revés), en % del canal.
   const [lineaMotor, setLineaMotor] = useState<number | null>(null);
@@ -140,19 +152,22 @@ export function VistaCamara({
     });
   }, [motor, estado]);
 
-  // Se muestra la parte del video donde está la franja (la vista es más baja que el video).
+  // «franja»: se muestra la parte del video donde está la franja (la vista es más baja que el video).
   const posicion =
     geometria && video.ancho > 0
       ? posicionParaVerFranja(geometria.canal.zona, video, { ...ajustes, lineaPorcentaje: lineaMotor ?? ajustes.lineaPorcentaje })
       : { x: 0.5, y: 0.5 };
+  const listo = video.ancho > 0 && vista.ancho > 0;
+  const enCanal = modo === "canal" && geometria !== null && listo;
+  const e: Encuadre | null = !listo ? null : enCanal ? encuadreCanal(geometria.canal.zona, vista, tapado) : encuadreCubrir(video, vista, posicion);
 
   // Cada resultado del motor se dibuja encima de la imagen.
   useEffect(() => {
-    if (estado !== "lista" || !geometria || video.ancho === 0) return;
+    if (estado !== "lista" || !geometria || !e) return;
     return motor.escuchar((r) => {
-      if (r.tipo === "resultado" && marcas.current && vista.ancho > 0) dibujarMarcas(marcas.current, r, geometria, video, vista, ajustes.sentido, posicion);
+      if (r.tipo === "resultado" && marcas.current) dibujarMarcas(marcas.current, r, geometria, vista, e);
     });
-  }, [motor, estado, geometria, video, vista, ajustes.sentido, posicion.x, posicion.y]);
+  }, [motor, estado, geometria, vista, e?.escala, e?.dx, e?.dy]);
 
   return (
     <div ref={caja} className={`camara ${className}`}>
@@ -161,7 +176,12 @@ export function VistaCamara({
         muted
         playsInline
         autoPlay
-        style={{ objectPosition: `${posicion.x * 100}% ${posicion.y * 100}%` }}
+        style={
+          enCanal
+            ? // El video del tamaño y en el sitio que dice el encuadre: el canal entero a la vista.
+              { position: "absolute", left: e!.dx, top: e!.dy, width: video.ancho * e!.escala, height: video.alto * e!.escala, maxWidth: "none", objectFit: "fill" }
+            : { objectPosition: `${posicion.x * 100}% ${posicion.y * 100}%` }
+        }
         onLoadedMetadata={(e) => setVideo({ ancho: e.currentTarget.videoWidth, alto: e.currentTarget.videoHeight })}
       />
       {estado === "lista" && <canvas ref={marcas} className="camara-marcas" aria-hidden="true" />}

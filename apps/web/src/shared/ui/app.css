@@ -560,8 +560,68 @@ html:not(.modo-laboratorio) body {
   pointer-events: none;
 }
 
-.contando {
-  --resto: calc(164px + 36dvh);
+/*
+ * Contando: la cámara ocupa todo el centro (de lado a lado, desde arriba) y muestra el canal
+ * entero; el contador va encima de la imagen, abajo, en una banda oscura.
+ */
+/* La cámara llena exactamente el centro: puede salirse a los bordes de la pantalla. */
+.contando .pantalla-centro {
+  overflow: visible;
+}
+
+.camara-completa {
+  flex: 1;
+  min-height: 0;
+  margin: calc(-1 * max(12px, env(safe-area-inset-top))) -16px 0;
+  border-radius: 0 0 16px 16px;
+}
+
+.camara-completa .camara-luz,
+.camara-completa .camara-bolsa {
+  top: max(8px, env(safe-area-inset-top));
+}
+
+/* El flujo va en la segunda fila de arriba: abajo está el contador. */
+.camara-completa .camara-flujo {
+  bottom: auto;
+  top: calc(max(8px, env(safe-area-inset-top)) + clamp(40px, 6dvh, 48px));
+}
+
+.camara-banda.contador {
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  bottom: 8px;
+  flex: none;
+  gap: clamp(2px, 0.8dvh, 8px);
+  padding: clamp(6px, 1.2dvh, 12px) 12px;
+  border: 2px solid rgb(255 255 255 / 0.25);
+  border-radius: 16px;
+  background: rgb(15 42 48 / 0.88);
+  color: var(--blanco);
+}
+
+.camara-banda .contador-de,
+.camara-banda .total-hoy {
+  color: #d5e4e2;
+}
+
+.camara-banda .faltan {
+  color: var(--blanco);
+}
+
+.camara-banda .total-hoy {
+  font-size: clamp(0.95rem, 2.2dvh, 1.15rem);
+}
+
+/* Sobre la imagen, el número un poco más chico que en la pantalla de antes. */
+.camara-banda .contador-numero {
+  font-size: clamp(56px, min(calc(14dvh - 20px), 26vw), 110px);
+}
+
+.camara-banda .contador-numero[data-largo="6"],
+.camara-banda .contador-numero[data-largo="7"] {
+  font-size: clamp(50px, min(calc(14dvh - 20px), 21vw), 110px);
 }
 
 /* Dentro del contador los avisos ocupan una línea, como «Faltan N». */
@@ -716,10 +776,19 @@ html:not(.modo-laboratorio) body {
 .contando-cerca .contador {
   background: var(--aviso-fondo);
   border-color: var(--aviso-fuerte);
+  color: var(--texto);
 }
 
 .contando-cerca .contador-numero {
   color: var(--aviso);
+}
+
+.contando-cerca .camara-banda .contador-de,
+.contando-cerca .camara-banda .total-hoy,
+.contando-llego .camara-banda .contador-de,
+.contando-llego .camara-banda .total-hoy,
+.contando-llego .camara-banda .faltan {
+  color: var(--texto);
 }
 
 .contando-cerca .avance span {
@@ -729,6 +798,7 @@ html:not(.modo-laboratorio) body {
 .contando-llego .contador {
   background: var(--exito-fondo);
   border-color: var(--exito);
+  color: var(--texto);
 }
 
 .contando-llego .avance span {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CONTROLES_INICIALES, configuracionMotor, lineaEnVista, posicionLineaPx, posicionParaVerFranja, puntoEnVista, tamanoProceso } from "../src/features/conteo/protocolo";
+import { CONTROLES_INICIALES, configuracionMotor, encuadreCanal, encuadreCubrir, lineaEnVista, posicionLineaPx, posicionParaVerFranja, puntoEnVista, tamanoProceso } from "../src/features/conteo/protocolo";
 
 describe("tamanoProceso", () => {
   it("reduce un video horizontal a 320 px de lado mayor", () => {
@@ -88,5 +88,28 @@ describe("mostrar la franja en la vista", () => {
     expect(pos).toEqual({ x: 0.5, y: 0.75 });
     const derecha = posicionParaVerFranja({ x: 100, y: 0, ancho: 200, alto: 360 }, { ancho: 640, alto: 360 }, { lineaPorcentaje: 50, sentido: "derecha" });
     expect(derecha).toEqual({ x: 200 / 640, y: 0.5 });
+  });
+});
+
+describe("encuadre", () => {
+  it("cubrir es lo mismo que puntoEnVista", () => {
+    const video = { ancho: 360, alto: 640 };
+    const vista = { ancho: 360, alto: 260 };
+    const e = encuadreCubrir(video, vista, { x: 0.5, y: 0.75 });
+    const p = puntoEnVista(180, 480, video, vista, { x: 0.5, y: 0.75 });
+    expect(180 * e.escala + e.dx).toBeCloseTo(p.x, 6);
+    expect(480 * e.escala + e.dy).toBeCloseTo(p.y, 6);
+  });
+
+  it("el canal entero cabe entre los avisos de arriba y el contador de abajo", () => {
+    const zona = { x: 100, y: 50, ancho: 300, alto: 600 };
+    const vista = { ancho: 390, alto: 650 };
+    const e = encuadreCanal(zona, vista, { arriba: 100, abajo: 250 });
+    const arriba = zona.y * e.escala + e.dy;
+    const abajo = (zona.y + zona.alto) * e.escala + e.dy;
+    expect(arriba).toBeCloseTo(100, 6);
+    expect(abajo).toBeCloseTo(400, 6);
+    // Centrado a lo ancho.
+    expect((zona.x + zona.ancho / 2) * e.escala + e.dx).toBeCloseTo(195, 6);
   });
 });
