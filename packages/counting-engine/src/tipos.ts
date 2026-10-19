@@ -56,6 +56,10 @@ export interface Pista {
   /** Lo que aporta al total ahora: máx(0, saldo) × peso con que se contó. */
   aporte: number;
   pesoContado: number;
+  /** De sus últimos cuadros, cuáles tuvieron forma de alevino (con perfil, lo descartado también se sigue). */
+  aceptadas: boolean[];
+  /** Cuadros seguidos (sin perderse) en que tuvo forma de alevino. */
+  seguidos: number;
   /** Medidas de sus últimos cuadros (con perfil), para aprender el tamaño del lote. */
   medidas: { largo: number; ancho: number; area: number; relacion: number }[];
   /** Si ya se usaron sus medidas para el lote. */

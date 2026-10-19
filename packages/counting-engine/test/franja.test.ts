@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { MotorConteo, type ConfiguracionMotor } from "../src";
-import { cuadroCon } from "./sintetico";
+import { PERFIL_PRUEBA } from "./perfil";
+import { cuadroCon, cuadroConFiguras, type Figura } from "./sintetico";
 
 /** Canal de 80 × 120, flujo hacia abajo, franja de conteo entre y = 70 y y = 90. */
 function config(parcial: Partial<ConfiguracionMotor> = {}): ConfiguracionMotor {
@@ -77,5 +78,44 @@ describe("franja de conteo con conteo neto", () => {
       total = motor.procesar(cuadroCon(objetos)).total;
     }
     expect(total).toBe(1);
+  });
+});
+
+describe("solo cuenta lo que se ve como alevino de forma confiable", () => {
+  /** Con perfil: una barra (parece alevino) o una cruz (basura), según el cuadro. */
+  function pasarObjeto(esCruz: (cuadro: number) => boolean) {
+    const motor = new MotorConteo({
+      detector: { umbral: 128, areaMinima: 6, areaTipica: null },
+      rastreador: { distanciaMaxima: 30, cuadrosDeGracia: 2 },
+      posicionLinea: 120,
+      franja: { inicio: 110, fin: 130 },
+      sentido: "abajo",
+      aprenderAreaTipica: false,
+      perfil: PERFIL_PRUEBA,
+    });
+    let total = 0;
+    let c = 0;
+    for (let y = 10; y <= 230; y += 8, c++) {
+      const figuras: Figura[] = esCruz(c)
+        ? [
+            { tipo: "rect", x: 64, y: y - 2, ancho: 32, alto: 5 },
+            { tipo: "rect", x: 78, y: y - 16, ancho: 5, alto: 32 },
+          ]
+        : [{ tipo: "elipse", cx: 80, cy: y, largo: 34, ancho: 6, angulo: 90 }];
+      total = motor.procesar(cuadroConFiguras(figuras)).total;
+    }
+    return total;
+  }
+
+  it("algo que un cuadro parece alevino y el siguiente basura no cuenta", () => {
+    expect(pasarObjeto((c) => c % 2 === 1)).toBe(0);
+  });
+
+  it("un alevino que un cuadro de cada cinco se ve raro sí cuenta", () => {
+    expect(pasarObjeto((c) => c % 5 === 4)).toBe(1);
+  });
+
+  it("algo que entra pareciendo alevino y después se ve siempre como basura no cuenta", () => {
+    expect(pasarObjeto((c) => c >= 4)).toBe(0);
   });
 });

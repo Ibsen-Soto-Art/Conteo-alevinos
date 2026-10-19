@@ -58,7 +58,9 @@ export class Rastreador {
     }
 
     this.pistas.forEach((pista, p) => {
-      if (!detDePista.has(p)) pista.perdida++;
+      if (detDePista.has(p)) return;
+      pista.perdida++;
+      pista.seguidos = 0;
     });
     for (const pista of this.pistas) {
       if (pista.perdida > this.op.cuadrosDeGracia) this.perdidas.push({ pista, vistoEn: this.cuadro - pista.perdida });
@@ -75,7 +77,7 @@ export class Rastreador {
         return;
       }
       const pista = nuevaPista(this.siguienteId++, det);
-      anotarMedidas(pista, det);
+      if (det.motivo === undefined) anotarMedidas(pista, det);
       this.pistas.push(pista);
       resultado.push({ pista, antes: null, deteccion: d });
     });
@@ -119,12 +121,15 @@ export class Rastreador {
 }
 
 function nuevaPista(id: number, det: Deteccion): Pista {
+  const aceptada = det.motivo === undefined;
   return {
     id,
     x: det.x,
     y: det.y,
-    peso: det.peso,
-    pesos: [det.peso],
+    peso: aceptada ? det.peso : 1,
+    pesos: aceptada ? [det.peso] : [],
+    aceptadas: [aceptada],
+    seguidos: aceptada ? 1 : 0,
     vx: 0,
     vy: 0,
     perdida: 0,
@@ -147,8 +152,15 @@ function mover(pista: Pista, det: Deteccion, cuadros: number): { x: number; y: n
   pista.vy = (det.y - pista.y) / cuadros;
   pista.x = det.x;
   pista.y = det.y;
-  anotarPeso(pista, det.peso);
-  anotarMedidas(pista, det);
+  // Lo descartado se sigue (para no perderle la pista) pero no cuenta para el peso ni las medidas.
+  const aceptada = det.motivo === undefined;
+  pista.aceptadas.push(aceptada);
+  if (pista.aceptadas.length > CUADROS_PESO) pista.aceptadas.shift();
+  pista.seguidos = aceptada ? pista.seguidos + 1 : 0;
+  if (aceptada) {
+    anotarPeso(pista, det.peso);
+    anotarMedidas(pista, det);
+  }
   pista.perdida = 0;
   return antes;
 }

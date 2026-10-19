@@ -263,3 +263,13 @@ html.modo-laboratorio body {
   padding: 0 8px;
   border-radius: 8px;
 }
+
+.laboratorio .leyenda p {
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.laboratorio .leyenda span {
+  font-weight: 700;
+  font-size: 1.1rem;
+}

@@ -164,8 +164,10 @@ export function clasificar(m: Medidas, p: PerfilPx): { acepta: true } | { acepta
   if (m.hueco >= 0.12 && m.relacion < 2.2) return { acepta: false, motivo: "burbuja" };
   if (m.relacion < RELACION_BURBUJA && m.cuerpos < 2 && m.solidez >= 0.8) return { acepta: false, motivo: "burbuja" };
 
+  // Varios alevinos: dos cuerpos lado a lado (y aun así alargada: una cruz también tiene dos
+  // «lomos», pero es redonda), o más larga o más ancha que uno solo.
   const variosAlevinos =
-    m.cuerpos >= 2 ||
+    (m.cuerpos >= 2 && m.relacion >= RELACION_BURBUJA) ||
     (p.largo !== null && m.largo > p.largo[1]) ||
     (p.ancho !== null && m.ancho > p.ancho[1]);
 
@@ -174,12 +176,14 @@ export function clasificar(m: Medidas, p: PerfilPx): { acepta: true } | { acepta
   // Algo mucho más grande que varios alevinos (una mano, una hoja grande).
   if (p.area !== null && m.area > p.area[1] * 6) return { acepta: false, motivo: "tamano" };
 
-  if (!variosAlevinos) {
-    // Los pedazos unidos dejan huecos entre ellos: su solidez no dice nada.
-    if (m.pedazos === 1 && m.solidez < p.solidezMinima) return { acepta: false, motivo: "forma" };
-    // Más delgado que cualquier alevino visto desde arriba: pelo, palito, raya.
-    if (m.relacion > p.relacionArriba[1] * 1.3) return { acepta: false, motivo: "forma" };
+  // Los pedazos unidos dejan huecos entre ellos: su solidez no dice nada.
+  if (m.pedazos === 1) {
+    // Varios alevinos juntos son menos sólidos que uno, pero no tan irregulares como una hoja.
+    const minima = variosAlevinos ? p.solidezMinima * 0.7 : p.solidezMinima;
+    if (m.solidez < minima) return { acepta: false, motivo: "forma" };
   }
+  // Más delgado que cualquier alevino visto desde arriba: pelo, palito, raya.
+  if (!variosAlevinos && m.relacion > p.relacionArriba[1] * 1.3) return { acepta: false, motivo: "forma" };
   return { acepta: true };
 }
 

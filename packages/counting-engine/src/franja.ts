@@ -38,10 +38,22 @@ export function ladoDe(p: { x: number; y: number }, franja: Franja, sentido: Sen
   return "dentro";
 }
 
-/** ¿Lleva al menos 3 cuadros vista y avanzando con el agua? */
+/** Fracción mínima de sus cuadros recientes en que debe verse como alevino para poder contar. */
+export const FRACCION_ACEPTADA = 0.6;
+
+/**
+ * ¿Puede contar? Se vio como alevino en al menos 3 cuadros seguidos, avanzando con el agua, y en
+ * la mayoría de sus cuadros recientes (algo que unas veces parece alevino y otras basura, no).
+ */
 export function avanzaConElFlujo(pista: Pista): boolean {
   const r = pista.recorrido;
-  return pista.edad >= CUADROS_PERSISTENCIA && r.length >= CUADROS_PERSISTENCIA && r[r.length - 1]! - r[r.length - CUADROS_PERSISTENCIA]! > 0;
+  const aceptadas = pista.aceptadas.filter(Boolean).length;
+  return (
+    pista.seguidos >= CUADROS_PERSISTENCIA &&
+    aceptadas >= FRACCION_ACEPTADA * pista.aceptadas.length &&
+    r.length >= CUADROS_PERSISTENCIA &&
+    r[r.length - 1]! - r[r.length - CUADROS_PERSISTENCIA]! > 0
+  );
 }
 
 /**

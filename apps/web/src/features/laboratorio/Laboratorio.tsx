@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import "./laboratorio.css";
 import { guardarAjustes, leerAjustes } from "../conteo/ajustes";
 import { Captura, bucleDeCuadros, type Geometria } from "../conteo/captura";
-import { dibujarEscena, pintarMascara } from "../conteo/dibujo";
+import { COLOR_DESCARTE, dibujarEscena, pintarMascara } from "../conteo/dibujo";
 import { type Controles, type MensajeDelMotor } from "../conteo/protocolo";
 import { useMotor } from "../conteo/useMotor";
 import { PanelControles } from "./PanelControles";
@@ -21,6 +21,13 @@ const NOMBRE_FUENTE: Record<Geometria["canal"]["fuente"], string> = {
   luz: "la zona iluminada (sin las 4 marcas)",
   todo: "el cuadro entero (no se ve el borde del canal)",
 };
+
+/** Las marcas del canal (en px del video) pasadas al recorte, para dibujarlas. */
+function marcasEnRecorte(g: Geometria) {
+  const { zona } = g.canal;
+  const k = g.recorte.ancho / zona.ancho;
+  return g.canal.marcas.map((m) => ({ x: (m.x - zona.x) * k, y: (m.y - zona.y) * k, lado: m.lado * k }));
+}
 
 const NOMBRE_FLUJO = { bien: "bien", rapido: "rápido", "muy-rapido": "muy rápido: baje la inclinación" } as const;
 
@@ -165,6 +172,7 @@ export function Laboratorio() {
         g ? resultado.current : null,
         controlesRef.current,
         proceso,
+        g ? marcasEnRecorte(g) : [],
       );
     };
     id = requestAnimationFrame(paso);
@@ -399,6 +407,21 @@ export function Laboratorio() {
             <button type="button" className="boton" disabled={fuente === "ninguna"} onClick={() => empezarFuente(fuente)}>
               Buscar el canal de nuevo
             </button>
+          </fieldset>
+          <fieldset className="panel leyenda">
+            <legend>Qué es cada color</legend>
+            <p>
+              <span style={{ color: "#00e5ff" }}>●</span> alevino: largo×ancho en px y peso (cuántos cuenta)
+            </p>
+            <p>
+              <span style={{ color: "#39ff6a" }}>●</span> ya contado · <span style={{ color: "#39ff6a" }}>□</span> marca del canal
+            </p>
+            {(["tamano", "forma", "burbuja", "quieto"] as const).map((m) => (
+              <p key={m}>
+                <span style={{ color: COLOR_DESCARTE[m] }}>◌</span> descartado por{" "}
+                {{ tamano: "tamaño (fuera del perfil)", forma: "forma (poco sólido, palito)", burbuja: "burbuja (redondo o anillo)", quieto: "quieto (no se mueve)" }[m]}
+              </p>
+            ))}
           </fieldset>
           <PanelControles controles={controles} onCambio={setControles} />
           <button type="button" className="boton" onClick={() => motor.enviar({ tipo: "olvidarArea" })}>

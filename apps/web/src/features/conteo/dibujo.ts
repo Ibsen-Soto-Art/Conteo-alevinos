@@ -1,4 +1,4 @@
-import type { Zona } from "@contador/counting-engine";
+import type { Deteccion, Zona } from "@contador/counting-engine";
 import { flujoVertical, franjaPorcentaje, posicionLineaPx, type Controles, type MensajeDelMotor } from "./protocolo";
 
 type Resultado = Extract<MensajeDelMotor, { tipo: "resultado" }>;
@@ -7,6 +7,25 @@ const COLOR_LINEA = "#ffd400";
 const COLOR_MANCHA = "#00e5ff";
 const COLOR_PISTA = "#ff8a00";
 const COLOR_CONTADA = "#39ff6a";
+const COLOR_MARCA = "#39ff6a";
+
+/** Color de cada motivo de descarte (en el laboratorio, con su nombre escrito al lado). */
+export const COLOR_DESCARTE: Record<NonNullable<Deteccion["motivo"]>, string> = {
+  tamano: "#ff4fd8",
+  forma: "#ff5a4f",
+  burbuja: "#8f8bff",
+  quieto: "#9aa5ad",
+};
+
+/**
+ * Lo que se escribe junto a cada mancha: aceptada, «largo×ancho ·peso» (en px del recorte);
+ * descartada, el motivo y sus medidas.
+ */
+export function etiquetaMancha(d: Deteccion): string {
+  const medidas = d.largo !== undefined && d.ancho !== undefined ? `${Math.round(d.largo)}×${Math.round(d.ancho)}` : `${d.area} px`;
+  if (d.motivo) return `${{ tamano: "tamaño", forma: "forma", burbuja: "burbuja", quieto: "quieto" }[d.motivo]} ${medidas}`;
+  return `${medidas} ·${d.peso}`;
+}
 
 /**
  * Marca en rojo los píxeles que el detector ve como alevino (más oscuros que el umbral),
@@ -35,6 +54,7 @@ export function dibujarEscena(
   resultado: Resultado | null,
   controles: Controles,
   proceso: { ancho: number; alto: number },
+  marcas: { x: number; y: number; lado: number }[] = [],
 ) {
   const { width: W, height: H } = ctx.canvas;
   const k = W / proceso.ancho;
@@ -65,16 +85,38 @@ export function dibujarEscena(
   ctx.stroke();
   ctx.setLineDash([]);
 
+  // marcas del canal encontradas (cuadros verdes)
+  ctx.strokeStyle = COLOR_MARCA;
+  ctx.lineWidth = 3;
+  for (const m of marcas) ctx.strokeRect((m.x - m.lado / 2) * k, (m.y - m.lado / 2) * k, m.lado * k, m.lado * k);
+
   if (!resultado || resultado.ancho !== proceso.ancho) return;
 
-  // manchas detectadas: un círculo del tamaño de su área
+  ctx.font = "bold 13px system-ui, sans-serif";
   ctx.lineWidth = 2;
-  ctx.strokeStyle = COLOR_MANCHA;
-  for (const d of resultado.detecciones) {
+  // descartadas: punteadas, del color de su motivo y con el motivo escrito
+  ctx.setLineDash([4, 4]);
+  for (const d of resultado.descartadas) {
+    const color = COLOR_DESCARTE[d.motivo ?? "forma"];
     const r = Math.max(4, Math.sqrt(d.area / Math.PI) * k + 3);
+    ctx.strokeStyle = color;
     ctx.beginPath();
     ctx.arc(d.x * k, d.y * k, r, 0, Math.PI * 2);
     ctx.stroke();
+    ctx.fillStyle = color;
+    ctx.fillText(etiquetaMancha(d), d.x * k + r + 3, d.y * k + 4);
+  }
+  ctx.setLineDash([]);
+
+  // aceptadas: un círculo del tamaño de su área, con largo×ancho y peso
+  for (const d of resultado.detecciones) {
+    const r = Math.max(4, Math.sqrt(d.area / Math.PI) * k + 3);
+    ctx.strokeStyle = COLOR_MANCHA;
+    ctx.beginPath();
+    ctx.arc(d.x * k, d.y * k, r, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.fillStyle = COLOR_MANCHA;
+    ctx.fillText(etiquetaMancha(d), d.x * k + r + 3, d.y * k + 4);
   }
 
   // pistas: naranja mientras viajan, verde cuando ya se contaron

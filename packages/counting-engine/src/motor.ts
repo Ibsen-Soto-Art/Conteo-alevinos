@@ -108,7 +108,9 @@ export class MotorConteo {
     const franja = this.franja;
     let sumados = 0;
     const quietas = new Set<number>();
-    for (const { pista, deteccion } of this.rastreador.actualizar(detecciones)) {
+    // Lo descartado también se sigue: así algo que a veces parece alevino conserva su historia.
+    const todas = [...detecciones, ...descartadas];
+    for (const { pista, deteccion } of this.rastreador.actualizar(todas)) {
       pista.edad++;
       pista.recorrido.push(enFlujo(pista, sentido));
       if (pista.recorrido.length > CUADROS_QUIETO) pista.recorrido.shift();
@@ -129,7 +131,10 @@ export class MotorConteo {
       total: this.total,
       sumadosEnEsteCuadro: sumados,
       detecciones: detecciones.filter((_, i) => !quietas.has(i)),
-      descartadas: [...descartadas, ...detecciones.filter((_, i) => quietas.has(i)).map((d) => ({ ...d, motivo: "quieto" as const }))],
+      descartadas: [
+        ...descartadas.filter((_, i) => !quietas.has(detecciones.length + i)),
+        ...todas.filter((_, i) => quietas.has(i)).map((d) => ({ ...d, motivo: "quieto" as const })),
+      ],
       pistas: this.rastreador.activas,
       fondo: estadoFondo(),
       perfil: this.perfilPx(),
