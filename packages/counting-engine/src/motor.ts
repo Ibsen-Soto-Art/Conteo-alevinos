@@ -2,7 +2,7 @@ import { areaMediana, detectarManchas, pesoDeMancha, type OpcionesDetector } fro
 import { ModeloFondo, type EstadoFondo, type OpcionesFondo } from "./fondo";
 import { clasificar, estadisticasDe, mediana, perfilEnPixeles, pesoPorForma, unirPedazos, type EstadisticasLote, type PerfilForma, type PerfilPx } from "./forma";
 import { MedidorFlujo, type Flujo } from "./flujo";
-import { actualizarConteo, enFlujo, ladoDe, type Franja } from "./franja";
+import { CUADROS_PERSISTENCIA, actualizarConteo, enFlujo, ladoDe, type Franja } from "./franja";
 import { encontrarManchas, type Medidas } from "./manchas";
 import { cerrar } from "./morfologia";
 import { Rastreador, type OpcionesRastreador } from "./rastreador";
@@ -16,6 +16,12 @@ export interface ConfiguracionMotor {
   /** Franja de conteo (dos bordes, en píxeles sobre el eje del flujo). Sin franja, la línea. */
   franja?: Franja | null;
   sentido: SentidoFlujo;
+  /**
+   * Averiguar el sentido del agua: mientras no lo sabe cuenta a la vez con `sentido` y con el
+   * contrario (con la franja a la misma distancia de su salida) y se queda con el sentido hacia
+   * el que avanzan las manchas. Así no importa cómo esté montado el celular.
+   */
+  sentidoAutomatico?: boolean;
   /** Si es verdadero y no hay área típica, la aprende de los primeros cuadros. */
   aprenderAreaTipica: boolean;
   /**
@@ -46,6 +52,10 @@ export interface ResultadoCuadro {
   perfil: PerfilPx | null;
   /** Qué tan rápido pasan los alevinos frente al límite de la franja; null si nada se mueve. */
   flujo: Flujo | null;
+  /** Sentido del agua con que se cuenta (el elegido, o el que va ganando si aún no sabe). */
+  sentido: SentidoFlujo;
+  /** Con sentido automático: si ya sabe hacia dónde corre el agua. */
+  sentidoDecidido: boolean;
 }
 
 const MUESTRAS_PARA_AREA = 60;
@@ -59,10 +69,31 @@ function estaQuieta(pista: Pista): boolean {
 }
 const MUESTRAS_PARA_LOTE = 40;
 
+export const SENTIDO_CONTRARIO: Record<SentidoFlujo, SentidoFlujo> = { abajo: "arriba", arriba: "abajo", derecha: "izquierda", izquierda: "derecha" };
+/** Cuánto deben avanzar las manchas en total (en largos del canal) para decidir el sentido. */
+export const AVANCE_PARA_DECIDIR = 1.5;
+
+type MedidaContado = { largo: number; ancho: number; area: number; relacion: number };
+
+/** Un conteo con un sentido del agua: su rastreador, su total y lo medido de lo que contó. */
+interface Conteo {
+  sentido: SentidoFlujo;
+  rastreador: Rastreador;
+  total: number;
+  /** Una medida (mediana de sus cuadros) por cada alevino suelto contado: lo que aprende la Prueba de 100. */
+  medidas: MedidaContado[];
+  /** Detecciones quietas en el último cuadro (índices en la lista de manchas). */
+  quietas: Set<number>;
+}
+
 /** Motor de conteo clásico: umbral + seguimiento + cruce de línea. No necesita entrenamiento. */
 export class MotorConteo {
-  private rastreador: Rastreador;
-  private total = 0;
+  /** Uno solo; dos (un sentido y el contrario) mientras averigua el sentido. */
+  private conteos: Conteo[];
+  /** Lo que avanzaron las manchas con `config.sentido` (negativo: al revés), para decidir. */
+  private avance = 0;
+  /** El total que se informó en el último cuadro (de él salen los sumados). */
+  private totalInformado = 0;
   private muestras: Deteccion[] = [];
   /** Área típica aprendida del lote. Se guarda aparte para que cambiar el detector no la borre. */
   private areaAprendida: number | null = null;
@@ -75,16 +106,36 @@ export class MotorConteo {
   private muestrasLote: Medidas[] = [];
   private loteAprendido: EstadisticasLote | null = null;
   private medidorFlujo = new MedidorFlujo();
-  /** Una medida (mediana de sus cuadros) por cada alevino suelto contado: lo que aprende la Prueba de 100. */
-  private medidasContados: { largo: number; ancho: number; area: number; relacion: number }[] = [];
   /** Momentos (ms) de los últimos cuadros, para saber cuántos por segundo se procesan. */
   private tiempos: number[] = [];
   /** Largo del canal sobre el eje del flujo en el último cuadro (para no pasarse con la franja). */
   private largoEje = 0;
 
   constructor(private config: ConfiguracionMotor) {
-    this.rastreador = new Rastreador(config.rastreador);
+    this.conteos = this.crearConteos();
     this.fondo = config.fondo ? new ModeloFondo(config.fondo) : null;
+  }
+
+  private crearConteos(): Conteo[] {
+    const nuevo = (sentido: SentidoFlujo): Conteo => ({ sentido, rastreador: new Rastreador(this.config.rastreador), total: 0, medidas: [], quietas: new Set() });
+    const { sentido, sentidoAutomatico } = this.config;
+    this.avance = 0;
+    this.totalInformado = 0;
+    return sentidoAutomatico ? [nuevo(sentido), nuevo(SENTIDO_CONTRARIO[sentido])] : [nuevo(sentido)];
+  }
+
+  /** El conteo que se informa: el elegido, o el que lleva más mientras no se sabe el sentido. */
+  private get elegido(): Conteo {
+    return this.conteos.reduce((a, b) => (b.total > a.total ? b : a));
+  }
+
+  /** Sentido del agua con que se cuenta. */
+  get sentido(): SentidoFlujo {
+    return this.elegido.sentido;
+  }
+
+  get sentidoDecidido(): boolean {
+    return this.conteos.length === 1;
   }
 
   /** `tiempo`: momento del cuadro en ms (para medir cuadros por segundo y la velocidad en px/s). */
@@ -101,41 +152,68 @@ export class MotorConteo {
 
     const { detecciones, descartadas } = this.config.perfil || this.fondo ? this.detectar(cuadro) : this.detectarComoAntes(cuadro);
 
-    const { sentido } = this.config;
-    const franja = this.franja;
-    let sumados = 0;
-    const quietas = new Set<number>();
     // Lo descartado también se sigue: así algo que a veces parece alevino conserva su historia.
     const todas = [...detecciones, ...descartadas];
-    for (const { pista, deteccion } of this.rastreador.actualizar(todas)) {
-      pista.edad++;
-      pista.recorrido.push(enFlujo(pista, sentido));
-      if (pista.recorrido.length > CUADROS_QUIETO) pista.recorrido.shift();
-      // Una pista nueva que nace dentro de la franja se supone venida de arriba (no se vio antes).
-      if (pista.ladoExterior === null) pista.ladoExterior = ladoDe(pista, franja, sentido) === "despues" ? "despues" : "antes";
-      if (estaQuieta(pista)) {
-        quietas.add(deteccion);
-        continue;
-      }
-      const cambio = actualizarConteo(pista, franja, sentido);
-      sumados += cambio;
-      if (cambio > 0) this.medirContado(pista);
-    }
-    this.total += sumados;
-    const flujo = this.medidorFlujo.observar(this.rastreador.activas, franja.fin - franja.inicio, this.cuadrosPorSegundo);
+    for (const c of this.conteos) this.contarCon(c, todas);
+    this.decidirSentido();
+
+    const elegido = this.elegido;
+    const { quietas } = elegido;
+    const sumados = elegido.total - this.totalInformado;
+    this.totalInformado = elegido.total;
+    const franja = this.franja;
+    const flujo = this.medidorFlujo.observar(elegido.rastreador.activas, franja.fin - franja.inicio, this.cuadrosPorSegundo);
     return {
       flujo,
-      total: this.total,
+      total: elegido.total,
       sumadosEnEsteCuadro: sumados,
       detecciones: detecciones.filter((_, i) => !quietas.has(i)),
       descartadas: [
         ...descartadas.filter((_, i) => !quietas.has(detecciones.length + i)),
         ...todas.filter((_, i) => quietas.has(i)).map((d) => ({ ...d, motivo: "quieto" as const })),
       ],
-      pistas: this.rastreador.activas,
+      pistas: elegido.rastreador.activas,
       fondo: estadoFondo(),
       perfil: this.perfilPx(),
+      sentido: elegido.sentido,
+      sentidoDecidido: this.sentidoDecidido,
     };
+  }
+
+  /** Sigue las manchas con el rastreador de un conteo y cuenta lo que cruza su franja. */
+  private contarCon(c: Conteo, todas: Deteccion[]) {
+    const franja = this.franjaDe(c.sentido);
+    c.quietas = new Set();
+    for (const { pista, deteccion } of c.rastreador.actualizar(todas)) {
+      pista.edad++;
+      pista.recorrido.push(enFlujo(pista, c.sentido));
+      if (pista.recorrido.length > CUADROS_QUIETO) pista.recorrido.shift();
+      // Una pista nueva que nace dentro de la franja se supone venida de arriba (no se vio antes).
+      if (pista.ladoExterior === null) pista.ladoExterior = ladoDe(pista, franja, c.sentido) === "despues" ? "despues" : "antes";
+      if (estaQuieta(pista)) {
+        c.quietas.add(deteccion);
+        continue;
+      }
+      const cambio = actualizarConteo(pista, franja, c.sentido);
+      c.total += cambio;
+      if (cambio > 0) medirContado(pista, c.medidas);
+    }
+  }
+
+  /**
+   * Con sentido automático: suma lo que avanzó cada mancha que se mueve (sobre el eje del canal) y,
+   * cuando entre todas avanzaron 1,5 largos del canal hacia un lado, se queda con ese conteo.
+   */
+  private decidirSentido() {
+    if (this.conteos.length < 2) return;
+    const [principal] = this.conteos;
+    for (const p of principal!.rastreador.activas) {
+      const r = p.recorrido;
+      if (p.perdida > 0 || p.edad < CUADROS_PERSISTENCIA || r.length < 2 || estaQuieta(p)) continue;
+      const paso = r[r.length - 1]! - r[r.length - 2]!;
+      if (Math.abs(paso) < this.config.rastreador.distanciaMaxima) this.avance += paso;
+    }
+    if (Math.abs(this.avance) >= AVANCE_PARA_DECIDIR * this.largoEje) this.conteos = [this.conteos[this.avance > 0 ? 0 : 1]!];
   }
 
   /** Sin perfil ni fondo: umbral fijo y cada mancha cuenta por su área (como la primera versión). */
@@ -197,7 +275,13 @@ export class MotorConteo {
    * velocidad máxima del perfil se vea al menos 3 cuadros dentro de ella.
    */
   get franja(): Franja {
-    const base = this.config.franja ?? { inicio: this.config.posicionLinea, fin: this.config.posicionLinea };
+    return this.franjaDe(this.elegido.sentido);
+  }
+
+  /** La franja para un sentido: el contrario la tiene en espejo, a la misma distancia de su salida. */
+  private franjaDe(sentido: SentidoFlujo): Franja {
+    let base = this.config.franja ?? { inicio: this.config.posicionLinea, fin: this.config.posicionLinea };
+    if (sentido !== this.config.sentido) base = { inicio: this.largoEje - base.fin, fin: this.largoEje - base.inicio };
     const { perfil, pxPorCm } = this.config;
     const cps = this.cuadrosPorSegundo;
     if (!this.config.franja || !perfil || !pxPorCm || !cps) return base;
@@ -237,10 +321,13 @@ export class MotorConteo {
 
   /** Vuelve el contador a cero (nueva bolsa) sin olvidar lo aprendido del lote. */
   reiniciarConteo() {
-    this.total = 0;
-    this.rastreador.reiniciar();
+    for (const c of this.conteos) {
+      c.total = 0;
+      c.rastreador.reiniciar();
+      c.medidas = [];
+    }
+    this.totalInformado = 0;
     this.medidorFlujo.reiniciar();
-    this.medidasContados = [];
   }
 
   /**
@@ -248,20 +335,15 @@ export class MotorConteo {
    * largo, ancho, área y relación largo/ancho. Es lo que la Prueba de 100 aprende del lote.
    */
   get estadisticasDelConteo(): EstadisticasLote | null {
-    return this.medidasContados.length >= 2 ? estadisticasDe(this.medidasContados) : null;
-  }
-
-  /** Un alevino suelto (peso 1) que se acaba de contar: su medida es la mediana de sus cuadros. */
-  private medirContado(pista: Pista) {
-    if (pista.medida || pista.pesoContado !== 1 || pista.medidas.length === 0) return;
-    pista.medida = true;
-    const de = (k: "largo" | "ancho" | "area" | "relacion") => mediana(pista.medidas.map((m) => m[k]));
-    this.medidasContados.push({ largo: de("largo"), ancho: de("ancho"), area: de("area"), relacion: de("relacion") });
+    const { medidas } = this.elegido;
+    return medidas.length >= 2 ? estadisticasDe(medidas) : null;
   }
 
   actualizarConfiguracion(parcial: Partial<ConfiguracionMotor>) {
+    const antes = this.config;
     this.config = { ...this.config, ...parcial };
-    if (parcial.rastreador) this.rastreador = new Rastreador(this.config.rastreador);
+    const cambiaSentido = antes.sentido !== this.config.sentido || Boolean(antes.sentidoAutomatico) !== Boolean(this.config.sentidoAutomatico);
+    if (parcial.rastreador || cambiaSentido) this.conteos = this.crearConteos();
     if ("fondo" in parcial) this.fondo = this.config.fondo ? new ModeloFondo(this.config.fondo) : null;
   }
 
@@ -282,9 +364,13 @@ export class MotorConteo {
     this.muestrasLote = [];
   }
 
-  /** Vuelve a mirar el canal vacío (se movió el celular o cambió la luz). */
+  /**
+   * Empieza a mirar el canal otra vez (pantalla nueva, se movió el celular): vuelve a aprender el
+   * fondo y, con sentido automático, vuelve a averiguar el sentido. El total vuelve a 0.
+   */
   reiniciarFondo() {
     this.fondo?.reiniciar();
+    if (this.config.sentidoAutomatico) this.conteos = this.crearConteos();
   }
 
   private aprenderArea(detecciones: Deteccion[]) {
@@ -295,6 +381,14 @@ export class MotorConteo {
       this.muestras = [];
     }
   }
+}
+
+/** Un alevino suelto (peso 1) que se acaba de contar: su medida es la mediana de sus cuadros. */
+function medirContado(pista: Pista, medidas: MedidaContado[]) {
+  if (pista.medida || pista.pesoContado !== 1 || pista.medidas.length === 0) return;
+  pista.medida = true;
+  const de = (k: keyof MedidaContado) => mediana(pista.medidas.map((m) => m[k]));
+  medidas.push({ largo: de("largo"), ancho: de("ancho"), area: de("area"), relacion: de("relacion") });
 }
 
 function aDeteccion(m: Medidas, peso: number): Deteccion {

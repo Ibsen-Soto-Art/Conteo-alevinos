@@ -32,10 +32,16 @@ export interface Medida {
  * Pasa el video por el motor igual que la app (`apps/web/src/features/conteo/captura.ts`):
  * 1. combina los primeros cuadros a 640 px y busca el canal y sus 4 marcas;
  * 2. recorta el canal a 480 px de lado mayor y lo pasa cuadro por cuadro, sin saltarse ninguno,
- *    con el perfil de la especie, la escala de las marcas y el fondo aprendido al empezar.
+ *    con el perfil de la especie, la escala de las marcas y el fondo aprendido mientras cuenta;
+ *    con `sentidoAutomatico`, averiguando hacia dónde corre el agua (como la app).
  * No hay Prueba de 100: el tamaño sale de las marcas o lo aprende el motor.
  */
-export async function contarVideo(ruta: string, ajustes: Controles, perfil: PerfilForma | null = null): Promise<Medida> {
+export async function contarVideo(
+  ruta: string,
+  ajustes: Controles,
+  perfil: PerfilForma | null = null,
+  { sentidoAutomatico = false }: { sentidoAutomatico?: boolean } = {},
+): Promise<Medida> {
   const video = await medidasVideo(ruta);
   const analizado = tamanoProceso(video.ancho, video.alto, LADO_ANALISIS);
   const primeros: CuadroGris[] = [];
@@ -45,7 +51,7 @@ export async function contarVideo(ruta: string, ajustes: Controles, perfil: Perf
   const g = geometriaDe(canalEnVideo(analizarCanal(combinarMaximo(primeros)), analizado, video));
   const { ancho, alto } = g.recorte;
 
-  const motor = new MotorConteo({ ...configuracionMotor(ajustes, ancho, alto), perfil, pxPorCm: g.pxPorCmRecorte, lote: null, fondo: {} });
+  const motor = new MotorConteo({ ...configuracionMotor(ajustes, ancho, alto), perfil, pxPorCm: g.pxPorCmRecorte, lote: null, fondo: {}, sentidoAutomatico });
   const gris = new Uint8Array(ancho * alto);
   const msPorCuadro = 1000 / video.cuadrosPorSegundo;
   let crudo = 0;

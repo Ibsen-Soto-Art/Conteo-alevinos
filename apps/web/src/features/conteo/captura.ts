@@ -35,8 +35,10 @@ export interface OpcionesCaptura {
   ajustes: Controles;
   perfil: PerfilForma | null;
   lote: EstadisticasLote | null;
-  /** Aprender el canal vacío antes de contar. */
+  /** Aprender el fondo del canal mientras cuenta. */
   fondo: boolean;
+  /** Averiguar hacia dónde corre el agua. */
+  sentidoAutomatico?: boolean;
   /** Cuando se sabe dónde está el canal. */
   alGeometria?: (g: Geometria) => void;
   /** Cada recorte que va al motor (el laboratorio pinta encima lo que el umbral ve). */
@@ -100,7 +102,7 @@ export class Captura {
   }
 
   /** Cambia ajustes, perfil, lote o fondo sin volver a buscar el canal. */
-  cambiar(parcial: Partial<Pick<OpcionesCaptura, "ajustes" | "perfil" | "lote" | "fondo">>) {
+  cambiar(parcial: Partial<Pick<OpcionesCaptura, "ajustes" | "perfil" | "lote" | "fondo" | "sentidoAutomatico">>) {
     Object.assign(this.op, parcial);
     if (this.geometriaActual) this.configurar();
   }
@@ -123,6 +125,7 @@ export class Captura {
       pxPorCm: g.pxPorCmRecorte,
       lote: this.op.lote ? escalarEstadisticas(this.op.lote, g.recorte.ancho) : null,
       fondo: this.op.fondo,
+      sentidoAutomatico: Boolean(this.op.sentidoAutomatico),
     });
   }
 

@@ -46,6 +46,7 @@ export function Laboratorio() {
   const [controles, setControles] = useState<Controles>(leerAjustes);
   const [perfilId, setPerfilId] = useState("otra-mediano");
   const [usarFondo, setUsarFondo] = useState(true);
+  const [sentidoAutomatico, setSentidoAutomatico] = useState(true);
   const [fuente, setFuente] = useState<Fuente>("ninguna");
   const [total, setTotal] = useState(0);
   const [pausado, setPausado] = useState(false);
@@ -60,6 +61,7 @@ export function Laboratorio() {
     origen: null as Resultado["origenTamano"],
     flujo: null as Resultado["flujo"],
     cpsCamara: null as number | null,
+    sentido: null as { sentido: Resultado["sentido"]; decidido: boolean } | null,
   });
   const [error, setError] = useState<string | null>(null);
 
@@ -97,6 +99,7 @@ export function Laboratorio() {
         origen: r.origenTamano,
         flujo: r.flujo,
         cpsCamara: cuadrosDeLaCamara(videoRef.current),
+        sentido: { sentido: r.sentido, decidido: r.sentidoDecidido },
       });
       contadorCps.current = { desde: ahora, cuadros: 0 };
     }
@@ -111,8 +114,8 @@ export function Laboratorio() {
   }, [controles]);
 
   useEffect(() => {
-    captura.current?.cambiar({ perfil, fondo: usarFondo });
-  }, [perfil, usarFondo]);
+    captura.current?.cambiar({ perfil, fondo: usarFondo, sentidoAutomatico });
+  }, [perfil, usarFondo, sentidoAutomatico]);
 
   // Cada fuente nueva (video o cámara): se busca el canal y se cuenta con el recorte.
   useEffect(() => {
@@ -127,6 +130,7 @@ export function Laboratorio() {
       perfil,
       lote: null,
       fondo: usarFondo,
+      sentidoAutomatico,
       alGeometria: setGeometria,
       alRecorte: (img) => {
         if (!verMascaraRef.current) return;
@@ -356,6 +360,16 @@ export function Laboratorio() {
             </dd>
             <dt>Escala</dt>
             <dd>{geometria?.pxPorCmRecorte ? `${geometria.pxPorCmRecorte.toFixed(1)} px por cm en el recorte` : "sin marcas: no se sabe"}</dd>
+            <dt>Sentido del agua</dt>
+            <dd>
+              {!estado.sentido
+                ? "—"
+                : !sentidoAutomatico
+                  ? `fijo: ${estado.sentido.sentido}`
+                  : estado.sentido.decidido
+                    ? `${estado.sentido.sentido} (averiguado)`
+                    : `averiguando… va ganando ${estado.sentido.sentido}`}
+            </dd>
             <dt>Fondo</dt>
             <dd>{estado.fondo ? `${NOMBRE_FONDO[estado.fondo.estado]} (${Math.round(estado.fondo.progreso * 100)} %)` : "apagado"}</dd>
             <dt>Tamaño del alevino</dt>
@@ -400,7 +414,11 @@ export function Laboratorio() {
             </label>
             <label className="interruptor">
               <input type="checkbox" checked={usarFondo} onChange={(e) => setUsarFondo(e.target.checked)} />
-              Aprender el canal vacío (fondo)
+              Aprender el fondo del canal
+            </label>
+            <label className="interruptor">
+              <input type="checkbox" checked={sentidoAutomatico} onChange={(e) => setSentidoAutomatico(e.target.checked)} />
+              Averiguar el sentido del agua (como la app)
             </label>
             <button type="button" className="boton" disabled={fuente === "ninguna"} onClick={() => empezarFuente(fuente)}>
               Buscar el canal de nuevo

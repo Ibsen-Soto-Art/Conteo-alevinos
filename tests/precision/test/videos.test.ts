@@ -16,6 +16,7 @@ const acostado = join(carpeta, "20261020_cachama_grande_001.mp4");
 const negativo = join(carpeta, "20261020_burbujas_001.mp4");
 const mezclado = join(carpeta, "20261020_cachama_mediano_001.mp4");
 const sinVacio = join(carpeta, "20261020_cachama_mediano_002.mp4");
+const alReves = join(carpeta, "20261020_cachama_mediano_003.mp4");
 const cachama = perfilDe("cachama", "mediano");
 let segundosVertical = 0;
 
@@ -25,6 +26,7 @@ beforeAll(() => {
   videoSintetico(negativo, ["burbuja", "basura", "burbuja", "basura", "burbuja", "basura"]);
   videoSintetico(mezclado, ["pez", "burbuja", "pez", "basura", "pez", "pez"]);
   videoSintetico(sinVacio, 10, { vacio: 0 });
+  videoSintetico(alReves, 10, { alReves: true });
 }, 120_000);
 
 describe("videos de prueba", () => {
@@ -41,6 +43,11 @@ describe("videos de prueba", () => {
     // El canal entre marcas mide 272 px de ancho en el video; el recorte, m.tamano.ancho.
     expect(m.pxPorCm).toBeCloseTo((PX_POR_CM * m.tamano.ancho) / 272, 0);
     expect(m.cuadros).toBe(Math.round(segundosVertical * 30));
+  }, 60_000);
+
+  it("como la app, averigua el sentido: un video con el agua subiendo (celular al revés) cuenta igual", async () => {
+    expect((await contarVideo(acostado, CONTROLES_INICIALES, cachama, { sentidoAutomatico: true })).crudo).toBe(8);
+    expect((await contarVideo(alReves, CONTROLES_INICIALES, cachama, { sentidoAutomatico: true })).crudo).toBe(10);
   }, 60_000);
 
   it("un video grabado acostado (con marca de rotación) se cuenta igual", async () => {

@@ -27,6 +27,7 @@ export function crearManejador(reloj: () => number = () => performance.now()) {
           perfil: nueva.perfil ?? null,
           pxPorCm: nueva.pxPorCm ?? null,
           lote: nueva.lote ?? null,
+          sentidoAutomatico: Boolean(nueva.sentidoAutomatico),
         };
         const mismoTamano = motor && actual?.ancho === nueva.ancho && actual?.alto === nueva.alto;
         if (!motor || !mismoTamano || Boolean(actual?.fondo) !== Boolean(nueva.fondo)) {
@@ -43,6 +44,7 @@ export function crearManejador(reloj: () => number = () => performance.now()) {
             perfil: config.perfil,
             pxPorCm: config.pxPorCm,
             lote: config.lote,
+            sentidoAutomatico: config.sentidoAutomatico,
             ...(cambiaRastreador ? { rastreador: config.rastreador } : {}),
           });
         }
@@ -73,6 +75,8 @@ export function crearManejador(reloj: () => number = () => performance.now()) {
           origenTamano: r.perfil?.origen ?? null,
           flujo: r.flujo,
           cuadrosPorSegundo: motor.cuadrosPorSegundo,
+          sentido: r.sentido,
+          sentidoDecidido: r.sentidoDecidido,
         };
       }
       case "reiniciar":

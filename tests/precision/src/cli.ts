@@ -64,7 +64,7 @@ async function principal() {
       continue;
     }
     try {
-      const m = await contarVideo(ruta, video.ajustes, video.perfil);
+      const m = await contarVideo(ruta, video.ajustes, video.perfil, { sentidoAutomatico: video.sentidoAutomatico });
       const canal = describirCanal(m.canal, m.pxPorCm);
       resultados.push({ video, app: m.crudo, canal });
       const perfil = video.perfil?.nombre ?? "sin perfil (falta el tamaño)";

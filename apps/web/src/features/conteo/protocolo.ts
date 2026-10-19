@@ -99,8 +99,10 @@ export interface ConfiguracionContar {
   pxPorCm?: number | null;
   /** Lo que midió la Prueba de 100 de este lote. */
   lote?: EstadisticasLote | null;
-  /** Aprender el canal vacío antes de contar. */
+  /** Aprender el fondo del canal mientras cuenta. */
   fondo?: boolean;
+  /** Averiguar hacia dónde corre el agua (la app del campesino siempre lo hace). */
+  sentidoAutomatico?: boolean;
 }
 
 export type MensajeAlMotor =
@@ -144,6 +146,9 @@ export type MensajeDelMotor =
       flujo: Flujo | null;
       /** Cuadros por segundo que procesa el motor. */
       cuadrosPorSegundo: number | null;
+      /** Sentido del agua con que cuenta (el elegido, o el que va ganando mientras lo averigua). */
+      sentido: SentidoFlujo;
+      sentidoDecidido: boolean;
     }
   | { tipo: "estadisticas"; estadisticas: EstadisticasLote | null; anchoRecorte: number }
   /** Análisis del canal, en píxeles del cuadro completo que se analizó (`ancho` × `alto`). */

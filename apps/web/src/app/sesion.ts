@@ -134,7 +134,7 @@ export function reducir(e: EstadoSesion, a: Accion): EstadoSesion {
     case "elegirTalla":
       return { ...e, talla: a.talla };
     case "sumarPrueba":
-      return e.pruebaApp === null ? { ...e, pruebaEnVivo: e.pruebaEnVivo + a.cantidad } : e;
+      return e.pruebaApp === null ? { ...e, pruebaEnVivo: Math.max(0, e.pruebaEnVivo + a.cantidad) } : e;
     case "resultadoPrueba":
       return { ...e, pruebaApp: a.contados, pruebaEstadisticas: a.estadisticas ?? null };
     case "repetirPrueba":
@@ -147,7 +147,8 @@ export function reducir(e: EstadoSesion, a: Accion): EstadoSesion {
     case "empezarConteo":
       return { ...e, conteo: a.conteo, crudo: 0, bolsas: [], pausado: false };
     case "sumar":
-      return e.pausado || !e.conteo ? e : { ...e, crudo: e.crudo + a.cantidad };
+      // Negativo si se devuelve uno ya contado; nunca baja de 0.
+      return e.pausado || !e.conteo ? e : { ...e, crudo: Math.max(0, e.crudo + a.cantidad) };
     case "pausar":
       return { ...e, pausado: true };
     case "seguir":

@@ -63,9 +63,13 @@ export function dibujarEscena(
   else ctx.drawImage(video, 0, 0, W, H);
   if (mascara) ctx.drawImage(mascara, 0, 0, W, H);
 
-  // franja de conteo: banda sombreada con sus dos bordes
-  const [a, b] = franjaPorcentaje(controles).map((p) => posicionLineaPx(p, controles.sentido, proceso.ancho, proceso.alto) * k);
-  const vertical = flujoVertical(controles.sentido);
+  // franja de conteo: banda sombreada con sus dos bordes (la del motor, que puede haber
+  // averiguado el sentido; sin resultado, la de los ajustes)
+  const conMotor = resultado && resultado.ancho === proceso.ancho;
+  const [a, b] = conMotor
+    ? [resultado.franja.inicio * k, resultado.franja.fin * k]
+    : franjaPorcentaje(controles).map((p) => posicionLineaPx(p, controles.sentido, proceso.ancho, proceso.alto) * k);
+  const vertical = flujoVertical(conMotor ? resultado.sentido : controles.sentido);
   ctx.fillStyle = "rgb(255 212 0 / 0.12)";
   if (vertical) ctx.fillRect(0, a!, W, b! - a!);
   else ctx.fillRect(a!, 0, b! - a!, H);

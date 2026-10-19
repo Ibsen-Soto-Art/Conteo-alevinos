@@ -64,6 +64,11 @@ describe("sesión de conteo", () => {
     expect(enBolsa(e)).toBe(1000);
   });
 
+  it("resta el alevino ya contado que se devuelve, sin bajar de 0", () => {
+    expect(aplicar(contando(), { tipo: "sumar", cantidad: 5 }, { tipo: "sumar", cantidad: -1 }).crudo).toBe(4);
+    expect(aplicar(contando(), { tipo: "sumar", cantidad: -1 }).crudo).toBe(0);
+  });
+
   it("en pausa no suma", () => {
     expect(enBolsa(aplicar(contando(), { tipo: "pausar" }, { tipo: "sumar", cantidad: 5 }))).toBe(0);
   });

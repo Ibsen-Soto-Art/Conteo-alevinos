@@ -76,6 +76,8 @@ Ejemplo:
 
 Las columnas `sentido`, `umbral`, `area_minima`, `linea`, `franja_ancho` y `distancia` de la plantilla cambian los ajustes del motor para ese video (los mismos de `/laboratorio`). Vacías: los de fábrica.
 
+Sin `sentido`, el motor **averigua solo** hacia dónde corre el agua, como la app del campesino (ADR 0010). Con `sentido`, lo usa fijo.
+
 ## Pruebas del script
 
 `pnpm --filter @contador/precision test` genera con ffmpeg videos sintéticos del canal (mesa oscura, canal iluminado con las 4 marcas, 4 s vacío y alevinos de 4 × 0,7 cm): uno vertical, otro guardado acostado con marca de rotación como los de celular, uno con solo burbujas y basura, y otro con alevinos mezclados con burbujas y basura. Comprueba que encuentra las marcas, que cuenta exacto (0 en el de burbujas y basura) y que arma el informe. Corren también en la CI.

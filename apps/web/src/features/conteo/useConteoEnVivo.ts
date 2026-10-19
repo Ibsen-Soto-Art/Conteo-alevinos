@@ -1,4 +1,4 @@
-import { hayPocaLuz, type EstadisticasLote, type EstadoFlujo, type PerfilForma } from "@contador/counting-engine";
+import { CONTROLES_INICIALES, hayPocaLuz, type EstadisticasLote, type EstadoFlujo, type PerfilForma } from "@contador/counting-engine";
 import type { EstadisticasMedidas } from "@contador/domain";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useMotorCompartido } from "../../app/MotorContexto";
@@ -28,7 +28,12 @@ export function useConteoEnVivo({
   lote?: EstadisticasLote | null;
 }) {
   const motor = useMotorCompartido();
-  const ajustes = useMemo(() => leerAjustes(), []);
+  // De /laboratorio solo se toman los ajustes de detección. El sentido del agua se averigua solo y
+  // la franja va siempre cerca de la salida: así no importa cómo esté montado el celular.
+  const ajustes = useMemo(() => {
+    const { sentido, lineaPorcentaje, franjaAncho } = CONTROLES_INICIALES;
+    return { ...leerAjustes(), sentido, lineaPorcentaje, franjaAncho };
+  }, []);
   const videoRef = useRef<HTMLVideoElement>(null);
   const captura = useRef<Captura | null>(null);
   const [estado, setEstado] = useState<EstadoCamara>("iniciando");
@@ -51,7 +56,8 @@ export function useConteoEnVivo({
     return motor.escuchar((r) => {
       captura.current?.recibir(r);
       if (r.tipo !== "resultado") return;
-      if (r.sumados > 0) alSumar.current(r.sumados);
+      // También negativo: un alevino ya contado que se devuelve por la franja se resta.
+      if (r.sumados !== 0) alSumar.current(r.sumados);
       brillo = brillo === null ? r.brillo : brillo + (r.brillo - brillo) * SUAVIZADO_BRILLO;
       setLuz(hayPocaLuz(brillo) ? "poca" : "bien");
       setFlujo(flujoForzado.current !== undefined ? flujoForzado.current : (r.flujo?.estado ?? null));
@@ -112,6 +118,7 @@ export function useConteoEnVivo({
       perfil: perfilRef.current,
       lote: loteRef.current,
       fondo: true,
+      sentidoAutomatico: true,
       alGeometria: setGeometria,
     });
     captura.current = c;

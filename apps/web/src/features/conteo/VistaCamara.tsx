@@ -49,7 +49,7 @@ function dibujarMarcas(
   };
 
   // Franja: los dos bordes de un lado al otro del recorte, con el medio sombreado.
-  const vertical = flujoVertical(sentido);
+  const vertical = flujoVertical(r.sentido);
   const borde = (b: number): [Punto, Punto] => (vertical ? [aVista(0, b), aVista(r.ancho, b)] : [aVista(b, 0), aVista(b, r.alto)]);
   const [a0, a1] = borde(r.franja.inicio);
   const [b0, b1] = borde(r.franja.fin);
@@ -128,8 +128,23 @@ export function VistaCamara({
     return () => observador.disconnect();
   }, []);
 
+  // Dónde está la franja que usa el motor (cambia si averigua que el agua corre al revés), en % del canal.
+  const [lineaMotor, setLineaMotor] = useState<number | null>(null);
+  useEffect(() => {
+    if (estado !== "lista") return;
+    return motor.escuchar((r) => {
+      if (r.tipo !== "resultado") return;
+      const largo = flujoVertical(r.sentido) ? r.alto : r.ancho;
+      const linea = Math.round(((r.franja.inicio + r.franja.fin) / 2 / largo) * 100);
+      setLineaMotor((antes) => (antes === linea ? antes : linea));
+    });
+  }, [motor, estado]);
+
   // Se muestra la parte del video donde está la franja (la vista es más baja que el video).
-  const posicion = geometria && video.ancho > 0 ? posicionParaVerFranja(geometria.canal.zona, video, ajustes) : { x: 0.5, y: 0.5 };
+  const posicion =
+    geometria && video.ancho > 0
+      ? posicionParaVerFranja(geometria.canal.zona, video, { ...ajustes, lineaPorcentaje: lineaMotor ?? ajustes.lineaPorcentaje })
+      : { x: 0.5, y: 0.5 };
 
   // Cada resultado del motor se dibuja encima de la imagen.
   useEffect(() => {

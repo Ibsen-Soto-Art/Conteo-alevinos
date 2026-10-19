@@ -13,9 +13,10 @@ export type Objeto = "pez" | "burbuja" | "basura";
  * - burbuja: anillo oscuro con el centro claro;
  * - basura: una cruz (un pedazo de hoja o ramita).
  * Con `vacio`: segundos de canal vacío al empezar (0 = alevinos desde el primer cuadro).
+ * Con `alReves`, el canal se ve girado 180° (el celular montado al revés): el agua sube en la imagen.
  * Con `acostado`, el video se guarda girado con la marca de rotación, como lo hacen los celulares.
  */
-export function videoSintetico(ruta: string, objetos: Objeto[] | number, { acostado = false, vacio = 4 } = {}) {
+export function videoSintetico(ruta: string, objetos: Objeto[] | number, { acostado = false, vacio = 4, alReves = false } = {}) {
   const lista: Objeto[] = typeof objetos === "number" ? Array.from({ length: objetos }, () => "pez") : objetos;
   const segundos = vacio + lista.length * 0.5 + 4.5;
   const marca = 2 * PX_POR_CM;
@@ -49,6 +50,10 @@ export function videoSintetico(ruta: string, objetos: Objeto[] | number, { acost
     anterior = `v${i}`;
   });
   // Acostado: la imagen se guarda girada 90° a la derecha y se anota que hay que girarla de vuelta.
+  if (alReves) {
+    filtro += `[${anterior}]vflip,hflip[reves];`;
+    anterior = "reves";
+  }
   if (acostado) filtro += `[${anterior}]transpose=1[girado];`;
   const salidaGenerada = acostado ? `${ruta}.acostado.mp4` : ruta;
   execFileSync("ffmpeg", [

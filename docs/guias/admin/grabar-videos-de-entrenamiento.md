@@ -113,7 +113,7 @@ Una fila por video en [`plantilla-videos.csv`](plantilla-videos.csv):
 | `flujo` | `lento` o `rapido` | `lento` |
 | `celular` | Marca y modelo | `Samsung A15` |
 | `altura_cm` | Del lente del celular al agua | `25` |
-| `sentido` | Hacia dónde corre el agua en la imagen: `abajo`, `arriba`, `derecha` o `izquierda` | `abajo` |
+| `sentido` | Opcional: hacia dónde corre el agua en la imagen (`abajo`, `arriba`, `derecha` o `izquierda`). Vacío: la app lo averigua sola | |
 | `notas` | Lo que pasó: «se cayó uno», «varios de lado», «se devolvieron», … | |
 
 Las últimas columnas (`umbral`, `area_minima`, `linea`, `franja_ancho`, `distancia`) son para quien programa: son los ajustes del motor que se probaron en `/laboratorio` con ese montaje. Si van vacías se usan los de fábrica.

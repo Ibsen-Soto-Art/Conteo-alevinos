@@ -6,7 +6,7 @@ import type { TipoVideo, VideoDePrueba } from "../src/plantilla";
 function r(archivo: string, especie: string, mano: number, app?: number, problema?: string, extra: { tipo?: TipoVideo; especieExacta?: string } = {}): Resultado {
   const video: VideoDePrueba = {
     fila: 2, archivo, tipo: extra.tipo ?? "alevinos", especie, especieExacta: extra.especieExacta ?? "", tamano: "pequeno", conteoAMano: mano,
-    luz: "buena", agua: "clara", flujo: "lento", celular: "X", ajustes: CONTROLES_INICIALES, perfil: null,
+    luz: "buena", agua: "clara", flujo: "lento", celular: "X", ajustes: CONTROLES_INICIALES, sentidoAutomatico: true, perfil: null,
   };
   return { video, app, problema };
 }

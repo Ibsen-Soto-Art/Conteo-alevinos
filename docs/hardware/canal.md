@@ -18,7 +18,7 @@ El montaje es parte del sistema: con un buen canal la app cuenta mejor que con c
 
 - **Canal de acrílico** blanco lechoso o transparente, de paredes lisas.
 - **Luz LED por debajo**, pareja en todo el canal. La cámara ve cada alevino como una sombra oscura sobre el fondo iluminado.
-- **Soporte del celular** fijo, mirando **derecho hacia abajo**, con el celular **vertical**. La altura no se cambia durante el conteo.
+- **Soporte del celular** fijo, mirando **derecho hacia abajo**, con el celular **vertical**. La altura no se cambia durante el conteo. No importa hacia qué lado apunte la parte de arriba del celular: la app averigua sola hacia dónde corre el agua y pone la franja cerca de la salida. Lo que sí importa es que el canal se vea **a lo largo** de la pantalla (de arriba a abajo).
 - **4 marcas** de cinta negra y **escalón a la salida** (abajo).
 
 ## Las 4 marcas: cuántos píxeles mide un centímetro
