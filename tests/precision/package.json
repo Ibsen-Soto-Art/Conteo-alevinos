@@ -10,7 +10,8 @@
     "typecheck": "tsc -p ."
   },
   "dependencies": {
-    "@contador/counting-engine": "workspace:*"
+    "@contador/counting-engine": "workspace:*",
+    "@contador/domain": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^26.6.5",

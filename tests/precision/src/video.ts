@@ -1,3 +1,4 @@
+import type { Zona } from "@contador/counting-engine";
 import { spawn } from "node:child_process";
 
 /**
@@ -5,11 +6,11 @@ import { spawn } from "node:child_process";
  * anotan que hay que girarlo: ffmpeg lo gira solo, y aquí se calcula el tamaño ya girado.
  */
 
-export async function medidasVideo(ruta: string): Promise<{ ancho: number; alto: number }> {
+export async function medidasVideo(ruta: string): Promise<{ ancho: number; alto: number; cuadrosPorSegundo: number }> {
   const salida = await ejecutar("ffprobe", [
     "-v", "error",
     "-select_streams", "v:0",
-    "-show_entries", "stream=width,height:stream_tags=rotate:stream_side_data=rotation",
+    "-show_entries", "stream=width,height,avg_frame_rate:stream_tags=rotate:stream_side_data=rotation",
     "-of", "json",
     ruta,
   ]);
@@ -19,17 +20,33 @@ export async function medidasVideo(ruta: string): Promise<{ ancho: number; alto:
     flujo.side_data_list?.find((d: { rotation?: number }) => d.rotation !== undefined)?.rotation ?? flujo.tags?.rotate ?? 0,
   );
   const girado = Math.abs(rotacion) % 180 === 90;
-  return girado ? { ancho: flujo.height, alto: flujo.width } : { ancho: flujo.width, alto: flujo.height };
+  const [n, d] = String(flujo.avg_frame_rate ?? "30/1").split("/").map(Number);
+  const cuadrosPorSegundo = n && d ? n / d : 30;
+  return girado
+    ? { ancho: flujo.height, alto: flujo.width, cuadrosPorSegundo }
+    : { ancho: flujo.width, alto: flujo.height, cuadrosPorSegundo };
 }
 
-/** Entrega cada cuadro del video, ya reducido a ancho × alto, en RGBA (como un canvas en la app). */
-export async function* cuadrosRgba(ruta: string, ancho: number, alto: number): AsyncGenerator<Uint8ClampedArray> {
+/**
+ * Entrega cada cuadro del video, ya reducido a ancho × alto, en RGBA (como un canvas en la app).
+ * Con `recorte` (en píxeles del video ya girado), solo esa zona; con `maximo`, solo los primeros.
+ */
+export async function* cuadrosRgba(
+  ruta: string,
+  ancho: number,
+  alto: number,
+  { recorte, maximo }: { recorte?: Zona; maximo?: number } = {},
+): AsyncGenerator<Uint8ClampedArray> {
+  const zona = recorte
+    ? `crop=${Math.round(recorte.ancho)}:${Math.round(recorte.alto)}:${Math.round(recorte.x)}:${Math.round(recorte.y)},`
+    : "";
   const ffmpeg = spawn(
     "ffmpeg",
     [
       "-v", "error",
       "-i", ruta,
-      "-vf", `scale=${ancho}:${alto}`,
+      "-vf", `${zona}scale=${ancho}:${alto}`,
+      ...(maximo ? ["-frames:v", String(maximo)] : []),
       // Un cuadro de salida por cada cuadro del video: sin repetir ni saltar (videos de celular con fps variable).
       "-fps_mode", "passthrough",
       "-f", "rawvideo",

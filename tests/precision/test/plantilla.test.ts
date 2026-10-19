@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { CONTROLES_INICIALES } from "@contador/counting-engine";
 import { describe, expect, it } from "vitest";
-import { leerPlantilla } from "../src/plantilla";
+import { leerPlantilla, perfilDelVideo } from "../src/plantilla";
 
 const CABECERA = readFileSync(new URL("../../../docs/guias/admin/plantilla-videos.csv", import.meta.url), "utf8").trim();
 
@@ -46,6 +46,39 @@ describe("leerPlantilla", () => {
       "Fila 4 (c.mp4): «conteo_a_mano» debe ser un número entero mayor que 0.",
       "Fila 5 (d.mp4): «conteo_a_mano» debe ser un número entero mayor que 0.",
       "Fila 6 (e.mp4): «sentido» debe ser abajo, arriba, derecha o izquierda.",
+    ]);
+  });
+
+  it("lee el tipo y la especie exacta, y elige el perfil de la especie y el tamaño", () => {
+    const p = leerPlantilla(
+      [
+        "archivo,tipo,especie,especie_exacta,tamano,conteo_a_mano",
+        "a.mp4,,Bocachico,Prochilodus magdalenae,Mediano,120",
+        "b.mp4,alevinos,tilapia,,grande,80",
+        "c.mp4,Vacío,,,,0",
+        "d.mp4,burbujas,,,,",
+      ].join("\n"),
+    );
+    expect(p.problemas).toEqual([]);
+    expect(p.videos.map((v) => [v.tipo, v.especie, v.especieExacta, v.conteoAMano, v.perfil?.id])).toEqual([
+      ["alevinos", "bocachico", "Prochilodus magdalenae", 120, "bocachico-mediano"],
+      ["alevinos", "tilapia", "", 80, "otra-grande"],
+      ["vacio", "", "", 0, "otra-mediano"],
+      ["burbujas", "", "", 0, "otra-mediano"],
+    ]);
+  });
+
+  it("un video con alevinos sin tamaño se mide sin perfil; uno sin alevinos usa el más amplio", () => {
+    expect(perfilDelVideo("cachama", "", "alevinos")).toBeNull();
+    expect(perfilDelVideo("cachama", "pequeno", "basura")!.id).toBe("cachama-pequeno");
+    expect(perfilDelVideo("", "", "basura")!.id).toBe("otra-mediano");
+  });
+
+  it("explica los tipos que no conoce y los videos sin alevinos con conteo", () => {
+    const p = leerPlantilla(["archivo,tipo,conteo_a_mano", "a.mp4,hojas,0", "b.mp4,basura,3"].join("\n"));
+    expect(p.problemas).toEqual([
+      "Fila 2 (a.mp4): «tipo» debe ser alevinos, vacio, burbujas o basura.",
+      "Fila 3 (b.mp4): un video de tipo «basura» no tiene alevinos: «conteo_a_mano» debe ser 0.",
     ]);
   });
 });

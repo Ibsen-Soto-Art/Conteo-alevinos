@@ -11,3 +11,4 @@ export * from "./forma";
 export * from "./franja";
 export * from "./canal";
 export * from "./flujo";
+export * from "./geometria";

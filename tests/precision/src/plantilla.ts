@@ -1,12 +1,22 @@
 import { CONTROLES_INICIALES, type Controles, type SentidoFlujo } from "@contador/counting-engine";
+import { perfilDe, type EspeciePerfil, type PerfilEspecie, type TamanoPerfil } from "@contador/domain";
 import { leerCsv } from "./csv";
+
+/** Qué hay en el video: alevinos, o nada que deba contarse (negativos). */
+export type TipoVideo = "alevinos" | "vacio" | "burbujas" | "basura";
+export const TIPOS: TipoVideo[] = ["alevinos", "vacio", "burbujas", "basura"];
+const TAMANOS: TamanoPerfil[] = ["pequeno", "mediano", "grande"];
+const ESPECIES_CON_PERFIL: EspeciePerfil[] = ["cachama", "pangasius", "bocachico"];
 
 /** Un video de la plantilla (docs/guias/admin/plantilla-videos.csv), ya revisado. */
 export interface VideoDePrueba {
   /** Número de fila en la plantilla (la cabecera es la 1), para los mensajes. */
   fila: number;
   archivo: string;
+  tipo: TipoVideo;
   especie: string;
+  /** Opcional, p. ej. «Prochilodus magdalenae» (el bocachico es un solo perfil). */
+  especieExacta: string;
   tamano: string;
   conteoAMano: number;
   luz: string;
@@ -15,6 +25,25 @@ export interface VideoDePrueba {
   celular: string;
   /** Ajustes del motor: los de fábrica, cambiados por las columnas técnicas si vienen llenas. */
   ajustes: Controles;
+  /**
+   * El perfil con que cuenta la app para esa especie y tamaño («Otra especie» si no es una de
+   * las tres). null si la fila no dice el tamaño: se mide sin perfil.
+   */
+  perfil: PerfilEspecie | null;
+}
+
+/** Un video sin alevinos: la app debe contar 0. */
+export const esNegativo = (v: Pick<VideoDePrueba, "tipo">) => v.tipo !== "alevinos";
+
+/**
+ * El perfil que elegiría el campesino. En los videos sin alevinos que no dicen especie ni tamaño
+ * se prueba con «Otra especie, mediano», el más amplio.
+ */
+export function perfilDelVideo(especie: string, tamano: string, tipo: TipoVideo): PerfilEspecie | null {
+  const t = TAMANOS.find((x) => x === tamano) ?? (tipo === "alevinos" ? null : "mediano");
+  if (!t) return null;
+  const e = ESPECIES_CON_PERFIL.find((x) => x === especie) ?? "otra";
+  return perfilDe(e, t);
 }
 
 export interface Plantilla {
@@ -54,9 +83,19 @@ export function leerPlantilla(texto: string): Plantilla {
       plantilla.problemas.push(`Fila ${fila}: falta el nombre del archivo.`);
       return;
     }
-    const conteo = Number(valor("conteo_a_mano").replace(/[.\s]/g, ""));
-    if (!Number.isInteger(conteo) || conteo <= 0) {
+    const tipo = (normalizar(valor("tipo")) || "alevinos") as TipoVideo;
+    if (!TIPOS.includes(tipo)) {
+      plantilla.problemas.push(`Fila ${fila} (${archivo}): «tipo» debe ser alevinos, vacio, burbujas o basura.`);
+      return;
+    }
+    const textoConteo = valor("conteo_a_mano").replace(/[.\s]/g, "");
+    const conteo = tipo !== "alevinos" && textoConteo === "" ? 0 : Number(textoConteo);
+    if (tipo === "alevinos" && (!Number.isInteger(conteo) || conteo <= 0)) {
       plantilla.problemas.push(`Fila ${fila} (${archivo}): «conteo_a_mano» debe ser un número entero mayor que 0.`);
+      return;
+    }
+    if (tipo !== "alevinos" && conteo !== 0) {
+      plantilla.problemas.push(`Fila ${fila} (${archivo}): un video de tipo «${tipo}» no tiene alevinos: «conteo_a_mano» debe ser 0.`);
       return;
     }
 
@@ -87,17 +126,22 @@ export function leerPlantilla(texto: string): Plantilla {
       (ajustes[clave] as number) = n;
     }
 
+    const especie = normalizar(valor("especie"));
+    const tamano = normalizar(valor("tamano"));
     plantilla.videos.push({
       fila,
       archivo,
-      especie: normalizar(valor("especie")) || "sin especie",
-      tamano: normalizar(valor("tamano")),
+      tipo,
+      especie: especie || (tipo === "alevinos" ? "sin especie" : ""),
+      especieExacta: valor("especie_exacta").trim(),
+      tamano,
       conteoAMano: conteo,
       luz: normalizar(valor("luz")),
       agua: normalizar(valor("agua")),
       flujo: normalizar(valor("flujo")),
       celular: valor("celular"),
       ajustes,
+      perfil: perfilDelVideo(especie, tamano, tipo),
     });
   });
   return plantilla;

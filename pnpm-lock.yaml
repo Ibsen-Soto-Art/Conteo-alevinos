@@ -82,6 +82,9 @@ importers:
       '@contador/counting-engine':
         specifier: workspace:*
         version: link:../../packages/counting-engine
+      '@contador/domain':
+        specifier: workspace:*
+        version: link:../../packages/domain
     devDependencies:
       '@types/node':
         specifier: ^26.6.5

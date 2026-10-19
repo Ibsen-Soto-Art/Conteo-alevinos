@@ -72,7 +72,7 @@ Sirven para comprobar que la app **no cuenta nada** cuando no hay alevinos. Grab
 | `burbujas` | Agua con burbujas: échela desde más alto o agite el balde. | 5 |
 | `basura` | Agua con hojitas, pasto, pedacitos de alimento, ramitas o barro. | 5 |
 
-En estos videos `conteo_a_mano` es **0** y `especie` y `tamano` van vacíos. Si se le cuela un alevino, no lo use (`usar` = `no`) o cámbielo a `alevinos` con el número que pasó.
+En estos videos `conteo_a_mano` es **0**. En `especie` y `tamano` escriba los de los alevinos que se cuentan en ese canal; si los deja vacíos, se prueba con «Otra especie, mediano», el perfil más amplio. Si se le cuela un alevino, no lo use (`usar` = `no`) o cámbielo a `alevinos` con el número que pasó.
 
 ## Cómo nombrar los archivos
 

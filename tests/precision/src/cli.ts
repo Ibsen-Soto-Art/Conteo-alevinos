@@ -1,16 +1,17 @@
 import { existsSync } from "node:fs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
-import { META_PROTOTIPO, informeCsv, informeMarkdown, porEspecie, porcentaje, type Resultado } from "./informe";
+import { META_PROTOTIPO, describirCanal, informeCsv, informeMarkdown, negativos, porEspecie, porcentaje, type Resultado } from "./informe";
 import { contarVideo } from "./medir";
-import { leerPlantilla } from "./plantilla";
+import { esNegativo, leerPlantilla } from "./plantilla";
 
 const AYUDA = `
 Uso: pnpm precision [carpeta] [--meta 2] [--plantilla videos.csv] [--salida carpeta]
 
   carpeta      Carpeta con los videos y la plantilla llena (por defecto tests/precision/videos).
-  --meta N     Error permitido en %, por defecto 2. Si alguna especie lo pasa, termina con error
-               (sirve para que una versión que cuenta peor no se publique).
+  --meta N     Error permitido en %, por defecto 2. Si alguna especie lo pasa, o si cuenta algo
+               en un video sin alevinos, termina con error (sirve para que una versión que cuenta
+               peor no se publique).
   --plantilla  Nombre de la plantilla dentro de la carpeta (por defecto videos.csv).
   --salida     Dónde guardar el informe (por defecto tests/precision/resultados).
 `;
@@ -63,10 +64,14 @@ async function principal() {
       continue;
     }
     try {
-      const m = await contarVideo(ruta, video.ajustes);
-      resultados.push({ video, app: m.crudo });
-      const error = (m.crudo - video.conteoAMano) / video.conteoAMano;
-      console.log(`${prefijo}: app ${m.crudo}, a mano ${video.conteoAMano} (${porcentaje(error)}, ${m.cuadros} cuadros)`);
+      const m = await contarVideo(ruta, video.ajustes, video.perfil);
+      const canal = describirCanal(m.canal, m.pxPorCm);
+      resultados.push({ video, app: m.crudo, canal });
+      const perfil = video.perfil?.nombre ?? "sin perfil (falta el tamaño)";
+      const medida = esNegativo(video)
+        ? `${video.tipo}: contó ${m.crudo} ${m.crudo === 0 ? "✓" : "✗"}`
+        : `app ${m.crudo}, a mano ${video.conteoAMano} (${porcentaje((m.crudo - video.conteoAMano) / video.conteoAMano)})`;
+      console.log(`${prefijo}: ${medida} · ${perfil} · ${canal} · ${m.cuadros} cuadros`);
     } catch (e) {
       const problema = e instanceof Error ? e.message : String(e);
       resultados.push({ video, problema });
@@ -86,9 +91,13 @@ async function principal() {
   console.log(`Informe guardado en ${join(op.salida, nombre)}.md y .csv`);
 
   const { especies } = porEspecie(resultados);
-  const fuera = especies.filter((f) => Math.abs(f.error) > op.meta);
-  if (fuera.length > 0 || especies.length === 0) {
-    console.error(`\n✗ Fuera de la meta: ${fuera.map((f) => `${f.grupo} (${porcentaje(f.error)})`).join(", ") || "nada medido"}`);
+  const sinAlevinos = negativos(resultados);
+  const fuera = [
+    ...especies.filter((f) => Math.abs(f.error) > op.meta).map((f) => `${f.grupo} (${porcentaje(f.error)})`),
+    ...sinAlevinos.filter((n) => n.contados > 0).map((n) => `${n.tipo} (contó ${n.contados} sin alevinos)`),
+  ];
+  if (fuera.length > 0 || (especies.length === 0 && sinAlevinos.length === 0)) {
+    console.error(`\n✗ Fuera de la meta: ${fuera.join(", ") || "nada medido"}`);
     process.exitCode = 1;
   }
 }
