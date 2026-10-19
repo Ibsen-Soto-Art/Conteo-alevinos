@@ -22,6 +22,11 @@ export interface ConfiguracionMotor {
    * el que avanzan las manchas. Así no importa cómo esté montado el celular.
    */
   sentidoAutomatico?: boolean;
+  /**
+   * `sentido` es el que se decidió en el conteo anterior (guardado en el teléfono): se confirma con
+   * la mitad del avance; corregirlo pide lo mismo de siempre.
+   */
+  sentidoConocido?: boolean;
   /** Si es verdadero y no hay área típica, la aprende de los primeros cuadros. */
   aprenderAreaTipica: boolean;
   /**
@@ -52,7 +57,7 @@ export interface ResultadoCuadro {
   perfil: PerfilPx | null;
   /** Qué tan rápido pasan los alevinos frente al límite de la franja; null si nada se mueve. */
   flujo: Flujo | null;
-  /** Sentido del agua con que se cuenta (el elegido, o el que va ganando si aún no sabe). */
+  /** Sentido del agua con que se cuenta (el elegido, o el de partida mientras lo averigua). */
   sentido: SentidoFlujo;
   /** Con sentido automático: si ya sabe hacia dónde corre el agua. */
   sentidoDecidido: boolean;
@@ -72,6 +77,8 @@ const MUESTRAS_PARA_LOTE = 40;
 export const SENTIDO_CONTRARIO: Record<SentidoFlujo, SentidoFlujo> = { abajo: "arriba", arriba: "abajo", derecha: "izquierda", izquierda: "derecha" };
 /** Cuánto deben avanzar las manchas en total (en largos del canal) para decidir el sentido. */
 export const AVANCE_PARA_DECIDIR = 1.5;
+/** Lo mismo para confirmar el sentido del conteo anterior. */
+export const AVANCE_PARA_CONFIRMAR = 0.75;
 
 type MedidaContado = { largo: number; ancho: number; area: number; relacion: number };
 
@@ -124,14 +131,27 @@ export class MotorConteo {
     return sentidoAutomatico ? [nuevo(sentido), nuevo(SENTIDO_CONTRARIO[sentido])] : [nuevo(sentido)];
   }
 
-  /** El conteo que se informa: el elegido, o el que lleva más mientras no se sabe el sentido. */
-  private get elegido(): Conteo {
+  /**
+   * El conteo que se muestra (franja, pistas, sentido): el elegido, o el de partida mientras no se
+   * sabe el sentido. Su total no: mientras averigua se informa el menor de los dos (ver `totalMostrado`).
+   */
+  private get mostrado(): Conteo {
+    return this.conteos[0]!;
+  }
+
+  /** Mientras averigua el sentido, el menor de los dos conteos: el número nunca se pasa. */
+  private get totalMostrado(): number {
+    return Math.min(...this.conteos.map((c) => c.total));
+  }
+
+  /** El que va ganando: de él salen las medidas de lo contado (Prueba de 100). */
+  private get lider(): Conteo {
     return this.conteos.reduce((a, b) => (b.total > a.total ? b : a));
   }
 
   /** Sentido del agua con que se cuenta. */
   get sentido(): SentidoFlujo {
-    return this.elegido.sentido;
+    return this.mostrado.sentido;
   }
 
   get sentidoDecidido(): boolean {
@@ -157,15 +177,16 @@ export class MotorConteo {
     for (const c of this.conteos) this.contarCon(c, todas);
     this.decidirSentido();
 
-    const elegido = this.elegido;
+    const elegido = this.mostrado;
     const { quietas } = elegido;
-    const sumados = elegido.total - this.totalInformado;
-    this.totalInformado = elegido.total;
+    const total = this.totalMostrado;
+    const sumados = total - this.totalInformado;
+    this.totalInformado = total;
     const franja = this.franja;
     const flujo = this.medidorFlujo.observar(elegido.rastreador.activas, franja.fin - franja.inicio, this.cuadrosPorSegundo);
     return {
       flujo,
-      total: elegido.total,
+      total,
       sumadosEnEsteCuadro: sumados,
       detecciones: detecciones.filter((_, i) => !quietas.has(i)),
       descartadas: [
@@ -202,7 +223,8 @@ export class MotorConteo {
 
   /**
    * Con sentido automático: suma lo que avanzó cada mancha que se mueve (sobre el eje del canal) y,
-   * cuando entre todas avanzaron 1,5 largos del canal hacia un lado, se queda con ese conteo.
+   * cuando entre todas avanzaron 1,5 largos del canal hacia un lado, se queda con ese conteo. Si el
+   * sentido de partida viene del conteo anterior, para confirmarlo basta la mitad.
    */
   private decidirSentido() {
     if (this.conteos.length < 2) return;
@@ -213,7 +235,9 @@ export class MotorConteo {
       const paso = r[r.length - 1]! - r[r.length - 2]!;
       if (Math.abs(paso) < this.config.rastreador.distanciaMaxima) this.avance += paso;
     }
-    if (Math.abs(this.avance) >= AVANCE_PARA_DECIDIR * this.largoEje) this.conteos = [this.conteos[this.avance > 0 ? 0 : 1]!];
+    const confirmar = (this.config.sentidoConocido ? AVANCE_PARA_CONFIRMAR : AVANCE_PARA_DECIDIR) * this.largoEje;
+    if (this.avance >= confirmar) this.conteos = [this.conteos[0]!];
+    else if (this.avance <= -AVANCE_PARA_DECIDIR * this.largoEje) this.conteos = [this.conteos[1]!];
   }
 
   /** Sin perfil ni fondo: umbral fijo y cada mancha cuenta por su área (como la primera versión). */
@@ -275,7 +299,7 @@ export class MotorConteo {
    * velocidad máxima del perfil se vea al menos 3 cuadros dentro de ella.
    */
   get franja(): Franja {
-    return this.franjaDe(this.elegido.sentido);
+    return this.franjaDe(this.mostrado.sentido);
   }
 
   /** La franja para un sentido: el contrario la tiene en espejo, a la misma distancia de su salida. */
@@ -335,14 +359,17 @@ export class MotorConteo {
    * largo, ancho, área y relación largo/ancho. Es lo que la Prueba de 100 aprende del lote.
    */
   get estadisticasDelConteo(): EstadisticasLote | null {
-    const { medidas } = this.elegido;
+    const { medidas } = this.lider;
     return medidas.length >= 2 ? estadisticasDe(medidas) : null;
   }
 
   actualizarConfiguracion(parcial: Partial<ConfiguracionMotor>) {
     const antes = this.config;
     this.config = { ...this.config, ...parcial };
-    const cambiaSentido = antes.sentido !== this.config.sentido || Boolean(antes.sentidoAutomatico) !== Boolean(this.config.sentidoAutomatico);
+    const cambiaSentido =
+      antes.sentido !== this.config.sentido ||
+      Boolean(antes.sentidoAutomatico) !== Boolean(this.config.sentidoAutomatico) ||
+      Boolean(antes.sentidoConocido) !== Boolean(this.config.sentidoConocido);
     if (parcial.rastreador || cambiaSentido) this.conteos = this.crearConteos();
     if ("fondo" in parcial) this.fondo = this.config.fondo ? new ModeloFondo(this.config.fondo) : null;
   }

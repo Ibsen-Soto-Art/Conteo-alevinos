@@ -39,6 +39,8 @@ export interface OpcionesCaptura {
   fondo: boolean;
   /** Averiguar hacia dónde corre el agua. */
   sentidoAutomatico?: boolean;
+  /** El sentido de los ajustes es el decidido en el conteo anterior. */
+  sentidoConocido?: boolean;
   /** Cuando se sabe dónde está el canal. */
   alGeometria?: (g: Geometria) => void;
   /** Cada recorte que va al motor (el laboratorio pinta encima lo que el umbral ve). */
@@ -126,6 +128,7 @@ export class Captura {
       lote: this.op.lote ? escalarEstadisticas(this.op.lote, g.recorte.ancho) : null,
       fondo: this.op.fondo,
       sentidoAutomatico: Boolean(this.op.sentidoAutomatico),
+      sentidoConocido: Boolean(this.op.sentidoConocido),
     });
   }
 

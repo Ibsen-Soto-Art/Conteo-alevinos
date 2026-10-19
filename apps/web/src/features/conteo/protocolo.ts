@@ -138,6 +138,8 @@ export interface ConfiguracionContar {
   fondo?: boolean;
   /** Averiguar hacia dónde corre el agua (la app del campesino siempre lo hace). */
   sentidoAutomatico?: boolean;
+  /** El sentido de `controles` es el decidido en el conteo anterior: se confirma más rápido. */
+  sentidoConocido?: boolean;
 }
 
 export type MensajeAlMotor =

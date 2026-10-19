@@ -368,7 +368,7 @@ export function Laboratorio() {
                   ? `fijo: ${estado.sentido.sentido}`
                   : estado.sentido.decidido
                     ? `${estado.sentido.sentido} (averiguado)`
-                    : `averiguando… va ganando ${estado.sentido.sentido}`}
+                    : `averiguando… (empezó con ${estado.sentido.sentido}; muestra el menor de los dos conteos)`}
             </dd>
             <dt>Fondo</dt>
             <dd>{estado.fondo ? `${NOMBRE_FONDO[estado.fondo.estado]} (${Math.round(estado.fondo.progreso * 100)} %)` : "apagado"}</dd>
