@@ -1,4 +1,4 @@
-import type { Medidas } from "./manchas";
+import { areaPoligono, ejes, envolventeDePuntos, type Medidas } from "./manchas";
 
 export type Rango = readonly [minimo: number, maximo: number];
 
@@ -169,9 +169,128 @@ export function clasificar(m: Medidas, p: PerfilPx): { acepta: true } | { acepta
   if (p.area !== null && m.area > p.area[1] * 6) return { acepta: false, motivo: "tamano" };
 
   if (!variosAlevinos) {
-    if (m.solidez < p.solidezMinima) return { acepta: false, motivo: "forma" };
+    // Los pedazos unidos dejan huecos entre ellos: su solidez no dice nada.
+    if (m.pedazos === 1 && m.solidez < p.solidezMinima) return { acepta: false, motivo: "forma" };
     // Más delgado que cualquier alevino visto desde arriba: pelo, palito, raya.
     if (m.relacion > p.relacionArriba[1] * 1.3) return { acepta: false, motivo: "forma" };
   }
   return { acepta: true };
+}
+
+/** Ancho máximo de UN alevino (visto de lado), en px; null si no se sabe el tamaño. */
+export function anchoMaximoDeUno(p: PerfilPx): number | null {
+  if (p.largoTipico === null) return null;
+  return p.ancho?.[1] ?? (p.largoTipico / p.relacionLado[0]) * 1.1;
+}
+
+/**
+ * Cuántos alevinos hay en una mancha, por su FORMA y no por su área: un pez de lado muestra
+ * mucha más superficie pero tiene el mismo largo. Vale 1 si el largo es el de un alevino y el ancho
+ * no pasa el de uno de lado. Vale más si el largo o el ancho superan claramente a uno, o si se
+ * ven dos cuerpos (dos cabezas, dos colas).
+ */
+export function pesoPorForma(m: Medidas, p: PerfilPx): number {
+  const L = p.largoTipico;
+  const W = p.anchoTipico;
+  const anchoUno = anchoMaximoDeUno(p);
+  if (L === null || W === null || anchoUno === null) return 1;
+  const porLargo = m.largo > 1.5 * L ? Math.round(m.largo / L) : 1;
+  const porAncho = m.ancho > anchoUno * 1.15 ? Math.max(2, Math.round(m.ancho / (W * 1.15))) : 1;
+  const lateral = Math.max(m.cuerpos, porAncho);
+  const peso = porLargo > 1 && lateral > 1 ? porLargo * lateral : Math.max(porLargo, lateral);
+  // Nunca más alevinos de los que caben en el área.
+  const areaUno = 0.65 * L * W;
+  return Math.max(1, Math.min(peso, Math.ceil(m.area / (areaUno * 0.6))));
+}
+
+/**
+ * Une los pedazos de un mismo pez: las bandas oscuras y las aletas transparentes del pangasius
+ * pueden partir su sombra en cabeza, cuerpo y cola. Dos manchas se unen si juntas miden un
+ * alevino (largo y ancho), van una detrás de la otra sobre el mismo eje (no lado a lado) y el
+ * hueco entre ellas es corto. Tres alevinos enteros en fila no se unen: juntos miden tres largos.
+ */
+export function unirPedazos(manchas: Medidas[], p: PerfilPx): Medidas[] {
+  const L = p.largoTipico;
+  const W = p.anchoTipico;
+  const anchoUno = anchoMaximoDeUno(p);
+  if (L === null || W === null || anchoUno === null || manchas.length < 2) return manchas;
+
+  let grupos = [...manchas].sort((a, b) => b.area - a.area);
+  let cambio = true;
+  while (cambio) {
+    cambio = false;
+    for (let i = 0; i < grupos.length && !cambio; i++) {
+      for (let j = i + 1; j < grupos.length && !cambio; j++) {
+        const u = unir(grupos[i]!, grupos[j]!);
+        if (sonUnMismoPez(grupos[i]!, grupos[j]!, u, L, W, anchoUno)) {
+          grupos = [u, ...grupos.filter((_, k) => k !== i && k !== j)];
+          cambio = true;
+        }
+      }
+    }
+  }
+  return grupos;
+}
+
+function sonUnMismoPez(a: Medidas, b: Medidas, u: Medidas, L: number, W: number, anchoUno: number): boolean {
+  if (u.largo > 1.35 * L || u.ancho > anchoUno) return false;
+  const c = Math.cos(u.angulo);
+  const s = Math.sin(u.angulo);
+  const tramo = (m: Medidas) => {
+    let min = Infinity;
+    let max = -Infinity;
+    for (let k = 0; k < m.envolvente.length; k += 2) {
+      const t = (m.envolvente[k]! - u.x) * c + (m.envolvente[k + 1]! - u.y) * s;
+      if (t < min) min = t;
+      if (t > max) max = t;
+    }
+    return [min, max] as const;
+  };
+  const [a0, a1] = tramo(a);
+  const [b0, b1] = tramo(b);
+  const solape = Math.min(a1, b1) - Math.max(a0, b0);
+  // Lado a lado: se solapan a lo largo del eje. Un pez partido: uno detrás del otro.
+  if (solape > 0.3 * Math.min(a1 - a0, b1 - b0)) return false;
+  if (-solape > 0.35 * L) return false;
+  // Alineados: los dos centros cerca del eje de la unión.
+  const lateral = (m: Medidas) => Math.abs(-(m.x - u.x) * s + (m.y - u.y) * c);
+  return Math.max(lateral(a), lateral(b)) <= Math.max(0.6 * W, 2);
+}
+
+/** Una mancha que junta las dos: área, centro y momentos exactos; envolvente de ambas. */
+function unir(a: Medidas, b: Medidas): Medidas {
+  const area = a.area + b.area;
+  const x = (a.x * a.area + b.x * b.area) / area;
+  const y = (a.y * a.area + b.y * b.area) / area;
+  const momento = (m: Medidas, k: "m20" | "m02" | "m11") => {
+    const dx = m.x - x;
+    const dy = m.y - y;
+    const extra = k === "m20" ? dx * dx : k === "m02" ? dy * dy : dx * dy;
+    return (m[k] + extra) * m.area;
+  };
+  const m20 = (momento(a, "m20") + momento(b, "m20")) / area;
+  const m02 = (momento(a, "m02") + momento(b, "m02")) / area;
+  const m11 = (momento(a, "m11") + momento(b, "m11")) / area;
+  const { largo, ancho, angulo } = ejes(m20, m02, m11);
+  const puntos: [number, number][] = [];
+  for (const m of [a, b]) for (let k = 0; k < m.envolvente.length; k += 2) puntos.push([m.envolvente[k]!, m.envolvente[k + 1]!]);
+  const envolvente = envolventeDePuntos(puntos);
+  return {
+    x,
+    y,
+    area,
+    largo,
+    ancho,
+    angulo,
+    relacion: largo / ancho,
+    solidez: Math.min(1, area / (areaPoligono(envolvente) || area)),
+    hueco: 0,
+    cuerpos: 1,
+    caja: [Math.min(a.caja[0], b.caja[0]), Math.min(a.caja[1], b.caja[1]), Math.max(a.caja[2], b.caja[2]), Math.max(a.caja[3], b.caja[3])],
+    envolvente,
+    m20,
+    m02,
+    m11,
+    pedazos: a.pedazos + b.pedazos,
+  };
 }

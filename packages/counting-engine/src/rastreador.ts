@@ -47,18 +47,9 @@ export class Rastreador {
       pista.vy = (det.y - pista.y) / cuadros;
       pista.x = det.x;
       pista.y = det.y;
-      pista.peso = Math.max(pista.peso, det.peso);
+      anotarPeso(pista, det.peso);
       pista.perdida = 0;
       resultado.push({ pista, antes });
-    }
-
-    // Si junto a una pista pesada aparece una mancha nueva, la mancha se separó:
-    // la pista vuelve a pesar lo que pesa su parte, y la otra parte será una pista nueva.
-    for (const { p, d } of pares) {
-      if (detUsada.has(d)) continue;
-      const propia = detDePista.get(p);
-      const pista = this.pistas[p]!;
-      if (propia !== undefined && pista.peso > 1) pista.peso = detecciones[propia]!.peso;
     }
 
     this.pistas.forEach((pista, p) => {
@@ -73,6 +64,7 @@ export class Rastreador {
         x: det.x,
         y: det.y,
         peso: det.peso,
+        pesos: [det.peso],
         vx: 0,
         vy: 0,
         perdida: 0,
@@ -92,6 +84,20 @@ export class Rastreador {
   reiniciar() {
     this.pistas = [];
   }
+}
+
+/** Cuadros que se miran para el peso de una pista. */
+const CUADROS_PESO = 15;
+
+/**
+ * El peso de la pista es la mediana (la de abajo, si son pares) de sus últimos cuadros: un solo
+ * cuadro raro (un pez que se pone de lado, dos que se rozan un momento) no cambia cuántos son.
+ */
+function anotarPeso(pista: Pista, peso: number) {
+  pista.pesos.push(peso);
+  if (pista.pesos.length > CUADROS_PESO) pista.pesos.shift();
+  const orden = [...pista.pesos].sort((a, b) => a - b);
+  pista.peso = orden[(orden.length - 1) >> 1]!;
 }
 
 /** Dónde debería estar la pista en el cuadro actual, contando los cuadros que lleva perdida. */

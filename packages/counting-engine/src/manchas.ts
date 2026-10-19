@@ -23,13 +23,31 @@ export interface Medidas {
   /** Caja [x0, y0, x1, y1) y vértices de la envolvente convexa [x, y, x, y, ...]. */
   caja: [number, number, number, number];
   envolvente: number[];
+  /** Momentos centrales de segundo orden (varianzas), para unir pedazos con exactitud. */
+  m20: number;
+  m02: number;
+  m11: number;
+  /** Pedazos unidos en esta mancha (1 si es una sola). */
+  pedazos: number;
 }
 
 /**
  * Busca las manchas (píxeles en 1 unidos en cruz) de la máscara y mide cada una.
  * Las de menos de `areaMinima` píxeles se ignoran (ruido).
+ *
+ * Con `original` (la máscara antes del cierre morfológico), el cierre solo sirve para AGRUPAR:
+ * área, momentos, huecos y cuerpos se miden con los píxeles originales de cada grupo (el cierre
+ * rellenaría el espacio entre dos alevinos pegados y el centro de una burbuja chica); la solidez
+ * se mide con la forma cerrada (así una banda oscura no la baja).
  */
-export function encontrarManchas(mascara: Uint8Array, ancho: number, alto: number, areaMinima: number, zona?: Zona): Medidas[] {
+export function encontrarManchas(
+  mascara: Uint8Array,
+  ancho: number,
+  alto: number,
+  areaMinima: number,
+  zona?: Zona,
+  original?: Uint8Array,
+): Medidas[] {
   const x0 = Math.max(0, Math.floor(zona?.x ?? 0));
   const y0 = Math.max(0, Math.floor(zona?.y ?? 0));
   const x1 = Math.min(ancho, Math.floor((zona?.x ?? 0) + (zona?.ancho ?? ancho)));
@@ -37,6 +55,7 @@ export function encontrarManchas(mascara: Uint8Array, ancho: number, alto: numbe
 
   const visto = new Uint8Array(ancho * alto);
   const pixeles = new Int32Array(ancho * alto);
+  const originales = original ? new Int32Array(ancho * alto) : pixeles;
   const manchas: Medidas[] = [];
 
   for (let y = y0; y < y1; y++) {
@@ -57,14 +76,23 @@ export function encontrarManchas(mascara: Uint8Array, ancho: number, alto: numbe
         if (py > y0 && !visto[j - ancho] && mascara[j - ancho]) (visto[j - ancho] = 1), (pixeles[n++] = j - ancho);
         if (py < y1 - 1 && !visto[j + ancho] && mascara[j + ancho]) (visto[j + ancho] = 1), (pixeles[n++] = j + ancho);
       }
-      if (n >= areaMinima) manchas.push(medir(pixeles, n, ancho));
+      if (!original) {
+        if (n >= areaMinima) manchas.push(medir(pixeles, n, ancho));
+        continue;
+      }
+      let m = 0;
+      for (let k = 0; k < n; k++) if (original[pixeles[k]!]) originales[m++] = pixeles[k]!;
+      if (m >= areaMinima) manchas.push(medir(originales, m, ancho, { pixeles, n }));
     }
   }
   return manchas;
 }
 
-/** Mide la mancha formada por los primeros `n` índices de `pixeles`. */
-export function medir(pixeles: Int32Array, n: number, ancho: number): Medidas {
+/**
+ * Mide la mancha formada por los primeros `n` índices de `pixeles`. Si viene `cerrada` (la misma
+ * mancha después del cierre), la solidez se mide con ella.
+ */
+export function medir(pixeles: Int32Array, n: number, ancho: number, cerrada?: { pixeles: Int32Array; n: number }): Medidas {
   let sx = 0;
   let sy = 0;
   let cx0 = Infinity;
@@ -117,7 +145,7 @@ export function medir(pixeles: Int32Array, n: number, ancho: number): Medidas {
   }
 
   const envolvente = envolventeConvexa(local, w, h, cx0, cy0);
-  const areaEnvolvente = areaPoligono(envolvente);
+  const solidez = cerrada ? solidezDe(cerrada.pixeles, cerrada.n, ancho) : Math.min(1, n / (areaPoligono(envolvente) || n));
   const huecos = contarHuecos(local, w, h);
 
   return {
@@ -128,12 +156,53 @@ export function medir(pixeles: Int32Array, n: number, ancho: number): Medidas {
     ancho: ancho_,
     angulo,
     relacion: largo / ancho_,
-    solidez: areaEnvolvente > 0 ? Math.min(1, n / areaEnvolvente) : 1,
+    solidez,
     hueco: huecos / (n + huecos),
     cuerpos: contarCuerpos(local, w, h, cx - cx0, cy - cy0, angulo, largo),
     caja: [cx0, cy0, cx1 + 1, cy1 + 1],
     envolvente,
+    m20: mu20,
+    m02: mu02,
+    m11: mu11,
+    pedazos: 1,
   };
+}
+
+/** Largo, ancho y ángulo de la elipse equivalente a unos momentos. */
+export function ejes(m20: number, m02: number, m11: number) {
+  const medio = (m20 + m02) / 2;
+  const raiz = Math.sqrt(((m20 - m02) / 2) ** 2 + m11 ** 2);
+  return {
+    largo: 4 * Math.sqrt(medio + raiz),
+    ancho: 4 * Math.sqrt(Math.max(medio - raiz, 1 / 12)),
+    angulo: 0.5 * Math.atan2(2 * m11, m20 - m02),
+  };
+}
+
+/** Área ÷ área de la envolvente convexa de unos píxeles. */
+function solidezDe(pixeles: Int32Array, n: number, ancho: number): number {
+  let x0 = Infinity;
+  let y0 = Infinity;
+  let x1 = -Infinity;
+  let y1 = -Infinity;
+  for (let k = 0; k < n; k++) {
+    const j = pixeles[k]!;
+    const x = j % ancho;
+    const y = (j - x) / ancho;
+    if (x < x0) x0 = x;
+    if (x > x1) x1 = x;
+    if (y < y0) y0 = y;
+    if (y > y1) y1 = y;
+  }
+  const w = x1 - x0 + 1;
+  const local = new Uint8Array(w * (y1 - y0 + 1));
+  for (let k = 0; k < n; k++) {
+    const j = pixeles[k]!;
+    const x = j % ancho;
+    local[((j - x) / ancho - y0) * w + (x - x0)] = 1;
+  }
+  const area = areaPoligono(envolventeConvexa(local, w, y1 - y0 + 1, x0, y0));
+  return area > 0 ? Math.min(1, n / area) : 1;
 }
 
 /** Envolvente convexa (cadena monótona) de las esquinas de los píxeles de cada fila. */

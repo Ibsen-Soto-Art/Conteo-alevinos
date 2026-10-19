@@ -1,6 +1,6 @@
 import { areaMediana, detectarManchas, pesoDeMancha, type OpcionesDetector } from "./detector";
 import { ModeloFondo, type EstadoFondo, type OpcionesFondo } from "./fondo";
-import { clasificar, estadisticasDe, perfilEnPixeles, type EstadisticasLote, type PerfilForma, type PerfilPx } from "./forma";
+import { clasificar, estadisticasDe, perfilEnPixeles, pesoPorForma, unirPedazos, type EstadisticasLote, type PerfilForma, type PerfilPx } from "./forma";
 import { marcarSiCruza } from "./linea";
 import { encontrarManchas, type Medidas } from "./manchas";
 import { cerrar } from "./morfologia";
@@ -56,6 +56,8 @@ export class MotorConteo {
   private fondo: ModeloFondo | null;
   private mascara = new Uint8Array(0);
   private temporal = new Uint8Array(0);
+  /** La máscara antes del cierre: con ella se miden las manchas (ver encontrarManchas). */
+  private original = new Uint8Array(0);
   /** Medidas de alevinos sueltos para aprender el lote cuando no viene de la Prueba de 100. */
   private muestrasLote: Medidas[] = [];
   private loteAprendido: EstadisticasLote | null = null;
@@ -115,13 +117,20 @@ export class MotorConteo {
     }
 
     const perfil = this.perfilPx();
-    if (perfil) cerrar(this.mascara, ancho, alto, perfil.radioCierre, this.temporal);
-    const manchas = encontrarManchas(this.mascara, ancho, alto, perfil ? 3 : this.config.detector.areaMinima, this.config.detector.zona);
+    let original: Uint8Array | undefined;
+    if (perfil && perfil.radioCierre > 0) {
+      if (this.original.length !== n) this.original = new Uint8Array(n);
+      this.original.set(this.mascara);
+      original = this.original;
+      cerrar(this.mascara, ancho, alto, perfil.radioCierre, this.temporal);
+    }
+    const encontradas = encontrarManchas(this.mascara, ancho, alto, perfil ? 3 : this.config.detector.areaMinima, this.config.detector.zona, original);
+    const manchas = perfil ? unirPedazos(encontradas, perfil) : encontradas;
 
     const detecciones: Deteccion[] = [];
     const descartadas: Deteccion[] = [];
     for (const m of manchas) {
-      const d = aDeteccion(m, pesoDeMancha(m.area, this.areaTipica));
+      const d = aDeteccion(m, perfil?.largoTipico ? pesoPorForma(m, perfil) : pesoDeMancha(m.area, this.areaTipica));
       if (!perfil) {
         detecciones.push(d);
         continue;

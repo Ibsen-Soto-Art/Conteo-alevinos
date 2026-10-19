@@ -34,7 +34,10 @@ export interface Pista {
   id: number;
   x: number;
   y: number;
+  /** Alevinos que lleva: la mediana de los pesos de sus últimos cuadros (no el máximo). */
   peso: number;
+  /** Pesos de los últimos cuadros. */
+  pesos: number[];
   /** Desplazamiento del último cuadro, para predecir dónde estará en el siguiente. */
   vx: number;
   vy: number;
