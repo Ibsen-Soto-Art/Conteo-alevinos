@@ -262,10 +262,12 @@ export class Rastreador {
     return this.pistas;
   }
 
+  /** A cero: sin pistas y los números vuelven a empezar en 1 (el registro de cada vuelta es igual). */
   reiniciar() {
     this.pistas = [];
     this.perdidas = [];
     this.llevadas = [];
+    this.siguienteId = 1;
   }
 }
 

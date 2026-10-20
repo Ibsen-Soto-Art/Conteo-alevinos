@@ -25,7 +25,7 @@ export interface VideoDePrueba {
   celular: string;
   /** Ajustes del motor: los de fábrica, cambiados por las columnas técnicas si vienen llenas. */
   ajustes: Controles;
-  /** Sin «sentido» en la fila, el motor lo averigua solo, como la app del campesino. */
+  /** Averiguar el sentido del agua. La app del campesino no lo hace (va fijo hacia abajo): false. */
   sentidoAutomatico: boolean;
   /**
    * El perfil con que cuenta la app para esa especie y tamaño («Otra especie» si no es una de
@@ -143,7 +143,7 @@ export function leerPlantilla(texto: string): Plantilla {
       flujo: normalizar(valor("flujo")),
       celular: valor("celular"),
       ajustes,
-      sentidoAutomatico: !sentido,
+      sentidoAutomatico: false,
       perfil: perfilDelVideo(especie, tamano, tipo),
     });
   });

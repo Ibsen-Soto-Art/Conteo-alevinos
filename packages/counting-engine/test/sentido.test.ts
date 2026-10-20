@@ -199,4 +199,29 @@ describe("sentido automático del agua", () => {
       expect([r.sentidoDecidido, r.sentido, r.total]).toEqual([false, "arriba", 0]);
     });
   });
+
+  describe("con el sentido fijo (la app del campesino): la franja no se mueve, avisa si el agua sube", () => {
+    it("el agua baja: cuenta normal y no avisa", () => {
+      const r = pasar(motor({ sentidoAutomatico: false }), [baja(), baja(), baja()]);
+      expect([r.total, r.sentido, r.aguaAlReves]).toEqual([3, "abajo", false]);
+    });
+
+    it("el agua sube (celular al revés): la franja sigue abajo, no cuenta y avisa", () => {
+      const m = motor({ sentidoAutomatico: false });
+      const r = pasar(m, [sube(), sube(), sube()]);
+      expect([r.total, r.sentido, r.aguaAlReves]).toEqual([0, "abajo", true]);
+      expect(m.franja).toEqual({ inicio: 70, fin: 90 });
+    });
+
+    it("un alevino que nada contra la corriente no basta para avisar", () => {
+      const r = pasar(motor({ sentidoAutomatico: false }), [baja(), { x: 64, ys: sube() }, baja()]);
+      expect(r.aguaAlReves).toBe(false);
+    });
+
+    it("el aviso se apaga cuando el agua vuelve a bajar (giraron el celular)", () => {
+      const m = motor({ sentidoAutomatico: false });
+      expect(pasar(m, [sube(), sube(), sube()]).aguaAlReves).toBe(true);
+      expect(pasar(m, [baja(), baja(), baja(), baja()]).aguaAlReves).toBe(false);
+    });
+  });
 });

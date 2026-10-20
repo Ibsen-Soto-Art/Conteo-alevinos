@@ -223,6 +223,16 @@ export function AvisoFlujo({ flujo, className = "" }: { flujo: EstadoFlujo | nul
   );
 }
 
+/** Los alevinos suben en la pantalla: el celular está al revés (la franja no se mueve sola). */
+export function AvisoAlReves({ alReves, className = "" }: { alReves: boolean; className?: string }) {
+  if (!alReves) return null;
+  return (
+    <span className={`estado estado-problema ${className}`} role="alert">
+      <IconoProblema /> El agua sube: gire el celular
+    </span>
+  );
+}
+
 /** «Luz bien» o «Poca luz», siempre con ícono y palabra. */
 export function AvisoLuz({ luz, className = "" }: { luz: Luz; className?: string }) {
   if (luz === null) return null;

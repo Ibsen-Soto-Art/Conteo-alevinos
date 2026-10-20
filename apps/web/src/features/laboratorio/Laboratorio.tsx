@@ -58,7 +58,8 @@ export function Laboratorio() {
   const [controles, setControles] = useState<Controles>(leerAjustes);
   const [perfilId, setPerfilId] = useState("otra-mediano");
   const [usarFondo, setUsarFondo] = useState(true);
-  const [sentidoAutomatico, setSentidoAutomatico] = useState(true);
+  // La app del campesino cuenta con el sentido fijo; averiguarlo es solo para probar aquí.
+  const [sentidoAutomatico, setSentidoAutomatico] = useState(false);
   const [fuente, setFuente] = useState<Fuente>("ninguna");
   const [total, setTotal] = useState(0);
   const [pausado, setPausado] = useState(false);
@@ -73,7 +74,7 @@ export function Laboratorio() {
     origen: null as Resultado["origenTamano"],
     flujo: null as Resultado["flujo"],
     cpsCamara: null as number | null,
-    sentido: null as { sentido: Resultado["sentido"]; decidido: boolean } | null,
+    sentido: null as { sentido: Resultado["sentido"]; decidido: boolean; alReves: boolean } | null,
   });
   const [error, setError] = useState<string | null>(null);
   const [registro, setRegistro] = useState<FilaRegistro[]>([]);
@@ -137,7 +138,7 @@ export function Laboratorio() {
         origen: r.origenTamano,
         flujo: r.flujo,
         cpsCamara: cuadrosDeLaCamara(videoRef.current),
-        sentido: { sentido: r.sentido, decidido: r.sentidoDecidido },
+        sentido: { sentido: r.sentido, decidido: r.sentidoDecidido, alReves: r.aguaAlReves },
       });
       contadorCps.current = { desde: ahora, cuadros: 0 };
     }
@@ -550,7 +551,7 @@ export function Laboratorio() {
               {!estado.sentido
                 ? "—"
                 : !sentidoAutomatico
-                  ? `fijo: ${estado.sentido.sentido}`
+                  ? `fijo: ${estado.sentido.sentido}${estado.sentido.alReves ? " · ¡el agua corre al revés! (en la app: «El agua sube: gire el celular»)" : ""}`
                   : estado.sentido.decidido
                     ? `${estado.sentido.sentido} (averiguado)`
                     : `averiguando… (empezó con ${estado.sentido.sentido}; muestra el menor de los dos conteos)`}
@@ -603,7 +604,7 @@ export function Laboratorio() {
             </label>
             <label className="interruptor">
               <input type="checkbox" checked={sentidoAutomatico} onChange={(e) => setSentidoAutomatico(e.target.checked)} />
-              Averiguar el sentido del agua (como la app)
+              Averiguar el sentido del agua (la app lo usa fijo hacia abajo)
             </label>
             <button type="button" className="boton" disabled={fuente === "ninguna"} onClick={() => empezarFuente(fuente)}>
               Buscar el canal de nuevo

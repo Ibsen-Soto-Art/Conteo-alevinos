@@ -12,7 +12,7 @@ import { Pantalla } from "../../shared/ui/Pantalla";
 import { Redirigir } from "../../shared/ui/Redirigir";
 import { useWakeLock } from "../../shared/useWakeLock";
 import { useConteoEnVivo } from "./useConteoEnVivo";
-import { AvisoFlujo, AvisoLuz, VistaCamara } from "./VistaCamara";
+import { AvisoAlReves, AvisoFlujo, AvisoLuz, VistaCamara } from "./VistaCamara";
 
 export function Contando() {
   const { estado, despachar, acciones } = useSesion();
@@ -101,6 +101,7 @@ export function Contando() {
       >
         <AvisoLuz luz={vivo.luz} className="camara-luz" />
         <AvisoFlujo flujo={vivo.flujo} className="camara-flujo" />
+        <AvisoAlReves alReves={vivo.aguaAlReves} className="camara-reves" />
         <span className="estado camara-bolsa">
           <IconoBolsa /> Bolsa {numeroBolsaAbierta(estado)}
         </span>

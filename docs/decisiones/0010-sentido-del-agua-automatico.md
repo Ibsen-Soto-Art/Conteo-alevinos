@@ -1,6 +1,6 @@
 # 0010. La app averigua sola hacia dónde corre el agua
 
-- Estado: Aceptada
+- Estado: Reemplazada en la app del campesino por la [ADR 0011](0011-franja-fija-abajo.md) (el motor lo conserva para /laboratorio)
 - Fecha: 2026-10-19
 - Decide: Frezzer
 

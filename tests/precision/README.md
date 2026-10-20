@@ -76,7 +76,7 @@ Ejemplo:
 
 Las columnas `sentido`, `umbral`, `area_minima`, `linea`, `franja_ancho` y `distancia` de la plantilla cambian los ajustes del motor para ese video (los mismos de `/laboratorio`). Vacías: los de fábrica.
 
-Sin `sentido`, el motor **averigua solo** hacia dónde corre el agua, como la app del campesino (ADR 0010). Con `sentido`, lo usa fijo.
+Sin `sentido`, el agua baja en la imagen y la franja va abajo, fija, igual que en la app del campesino (ADR 0011). Si el video está grabado con el celular al revés, escriba `arriba` en `sentido`.
 
 ## Pruebas del script
 

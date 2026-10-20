@@ -706,6 +706,18 @@ html:not(.modo-laboratorio) body {
   right: 8px;
 }
 
+/* El agua sube (celular al revés): en el medio de la imagen, que no se pase por alto. */
+.camara-reves {
+  position: absolute;
+  left: 50%;
+  top: 45%;
+  transform: translate(-50%, -50%);
+  max-width: calc(100% - 16px);
+  font-size: clamp(1rem, min(2.8dvh, 4.6vw), 1.3rem);
+  white-space: normal;
+  text-align: center;
+}
+
 .contador {
   flex: 1;
   min-height: 0;

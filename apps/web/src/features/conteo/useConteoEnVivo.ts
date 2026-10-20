@@ -2,7 +2,7 @@ import { hayPocaLuz, type EstadisticasLote, type EstadoFlujo, type PerfilForma }
 import type { EstadisticasMedidas } from "@contador/domain";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useMotorCompartido } from "../../app/MotorContexto";
-import { ajustesDelCampesino, guardarSentido, leerSentidoGuardado } from "./ajustes";
+import { ajustesDelCampesino } from "./ajustes";
 import { Captura, bucleDeCuadros, type Geometria } from "./captura";
 
 export type EstadoCamara = "iniciando" | "lista" | "sin-permiso" | "inseguro" | "error";
@@ -28,14 +28,15 @@ export function useConteoEnVivo({
   lote?: EstadisticasLote | null;
 }) {
   const motor = useMotorCompartido();
-  // De /laboratorio solo se toman los ajustes de detección. El sentido del agua parte del último
-  // decidido en este teléfono y el motor lo confirma o lo corrige: no importa cómo esté montado.
-  const { ajustes, sentidoConocido } = useMemo(() => ajustesDelCampesino(), []);
+  // De /laboratorio solo se toman los ajustes de detección; el agua baja y la franja va abajo.
+  const ajustes = useMemo(() => ajustesDelCampesino(), []);
   const videoRef = useRef<HTMLVideoElement>(null);
   const captura = useRef<Captura | null>(null);
   const [estado, setEstado] = useState<EstadoCamara>("iniciando");
   const [luz, setLuz] = useState<Luz>(null);
   const [flujo, setFlujo] = useState<EstadoFlujo | null>(null);
+  /** Los alevinos suben en la pantalla: el celular está montado al revés. */
+  const [aguaAlReves, setAguaAlReves] = useState(false);
   /** Solo en ?demo: un aviso de flujo forzado por las pruebas, que gana sobre lo medido. */
   const flujoForzado = useRef<EstadoFlujo | null | undefined>(undefined);
   const [geometria, setGeometria] = useState<Geometria | null>(null);
@@ -53,8 +54,7 @@ export function useConteoEnVivo({
     return motor.escuchar((r) => {
       captura.current?.recibir(r);
       if (r.tipo !== "resultado") return;
-      // El sentido decidido queda guardado para empezar con él el próximo conteo.
-      if (r.sentidoDecidido && r.sentido !== leerSentidoGuardado()) guardarSentido(r.sentido);
+      setAguaAlReves(r.aguaAlReves);
       // También negativo: un alevino ya contado que se devuelve por la franja se resta.
       if (r.sumados !== 0) alSumar.current(r.sumados);
       brillo = brillo === null ? r.brillo : brillo + (r.brillo - brillo) * SUAVIZADO_BRILLO;
@@ -117,8 +117,8 @@ export function useConteoEnVivo({
       perfil: perfilRef.current,
       lote: loteRef.current,
       fondo: true,
-      sentidoAutomatico: true,
-      sentidoConocido,
+      // Sentido fijo hacia abajo: la franja nunca se mueve (si el agua sube, se avisa).
+      sentidoAutomatico: false,
       alGeometria: setGeometria,
     });
     captura.current = c;
@@ -127,7 +127,7 @@ export function useConteoEnVivo({
       parar();
       captura.current = null;
     };
-  }, [activo, estado, motor, ajustes, sentidoConocido]);
+  }, [activo, estado, motor, ajustes]);
 
   /**
    * Lo que se midió de los alevinos contados (para la Prueba de 100), con el ancho del recorte en
@@ -161,5 +161,5 @@ export function useConteoEnVivo({
     return () => window.removeEventListener("demo-flujo", forzar);
   }, []);
 
-  return { videoRef, estado, luz, flujo, ajustes, geometria, pedirEstadisticas, reintentar: () => setIntento((i) => i + 1) };
+  return { videoRef, estado, luz, flujo, aguaAlReves, ajustes, geometria, pedirEstadisticas, reintentar: () => setIntento((i) => i + 1) };
 }

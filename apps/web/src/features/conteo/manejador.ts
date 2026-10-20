@@ -80,6 +80,7 @@ export function crearManejador(reloj: () => number = () => performance.now()) {
           sentido: r.sentido,
           sentidoDecidido: r.sentidoDecidido,
           eventos: r.eventos,
+          aguaAlReves: r.aguaAlReves,
         };
       }
       case "reiniciar":

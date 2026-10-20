@@ -190,6 +190,8 @@ export type MensajeDelMotor =
       sentidoDecidido: boolean;
       /** Cada pista que cambió un total en este cuadro (registro de /laboratorio). */
       eventos: EventoConteo[];
+      /** Con el sentido fijo: los alevinos suben en la pantalla (celular al revés). */
+      aguaAlReves: boolean;
     }
   | { tipo: "estadisticas"; estadisticas: EstadisticasLote | null; anchoRecorte: number }
   /** Análisis del canal, en píxeles del cuadro completo que se analizó (`ancho` × `alto`). */

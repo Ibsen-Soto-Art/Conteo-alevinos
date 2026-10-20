@@ -13,7 +13,8 @@ Cada archivo guarda **una** decisión: qué se decidió, por qué y qué se desc
 | [0007](0007-solo-conteo.md) | La app solo facilita el conteo | Aceptada |
 | [0008](0008-motor-clasico-con-perfiles.md) | Motor clásico con perfiles de especie, fondo aprendido y franja de conteo neto | Aceptada |
 | [0009](0009-contar-sin-esperar-el-fondo.md) | Contar sin esperar el fondo | Aceptada |
-| [0010](0010-sentido-del-agua-automatico.md) | La app averigua sola hacia dónde corre el agua | Aceptada |
+| [0010](0010-sentido-del-agua-automatico.md) | La app averigua sola hacia dónde corre el agua | Reemplazada por 0011 en la app |
+| [0011](0011-franja-fija-abajo.md) | La franja va fija abajo; si el agua sube, la app avisa | Aceptada |
 
 ## Formato
 

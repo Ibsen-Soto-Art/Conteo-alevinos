@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ajustesDelCampesino, guardarAjustes, guardarSentido, leerAjustes, leerSentidoGuardado } from "../src/features/conteo/ajustes";
+import { ajustesDelCampesino, guardarAjustes, leerAjustes } from "../src/features/conteo/ajustes";
 import { CONTROLES_INICIALES } from "../src/features/conteo/protocolo";
 
 function almacen() {
@@ -30,27 +30,16 @@ describe("ajustes del motor", () => {
     expect(() => guardarAjustes(CONTROLES_INICIALES, roto)).not.toThrow();
   });
 
-  describe("sentido del agua guardado", () => {
-    it("sin conteo anterior parte de «abajo», con la franja cerca de la salida", () => {
-      const { ajustes, sentidoConocido } = ajustesDelCampesino(almacen());
-      expect([ajustes.sentido, ajustes.lineaPorcentaje, sentidoConocido]).toEqual(["abajo", 75, false]);
+  describe("ajustes de la app del campesino", () => {
+    it("el agua baja y la franja va siempre abajo, cerca de la salida", () => {
+      expect(ajustesDelCampesino(almacen())).toMatchObject({ sentido: "abajo", lineaPorcentaje: 75 });
     });
 
-    it("el siguiente conteo parte del último sentido decidido, con la franja cerca de su salida", () => {
+    it("lo guardado en el laboratorio o un sentido de antes no mueven la franja; los ajustes de detección sí se usan", () => {
       const a = almacen();
-      guardarSentido("arriba", a);
-      expect(leerSentidoGuardado(a)).toBe("arriba");
-      const { ajustes, sentidoConocido } = ajustesDelCampesino(a);
-      // El agua sube: la salida está arriba, la franja al 25 % desde arriba.
-      expect([ajustes.sentido, ajustes.lineaPorcentaje, sentidoConocido]).toEqual(["arriba", 25, true]);
-    });
-
-    it("lo guardado en el laboratorio no cambia el sentido ni la franja; lo dañado se ignora", () => {
-      const a = almacen();
-      guardarAjustes({ ...CONTROLES_INICIALES, umbral: 140, sentido: "izquierda", lineaPorcentaje: 40 }, a);
-      expect(ajustesDelCampesino(a).ajustes).toMatchObject({ umbral: 140, sentido: "abajo", lineaPorcentaje: 75 });
-      a.setItem("contador.sentidoAgua", "diagonal");
-      expect(leerSentidoGuardado(a)).toBeNull();
+      guardarAjustes({ ...CONTROLES_INICIALES, umbral: 140, sentido: "arriba", lineaPorcentaje: 25 }, a);
+      a.setItem("contador.sentidoAgua", "arriba"); // lo que guardaba la versión anterior
+      expect(ajustesDelCampesino(a)).toMatchObject({ umbral: 140, sentido: "abajo", lineaPorcentaje: 75 });
     });
   });
 });

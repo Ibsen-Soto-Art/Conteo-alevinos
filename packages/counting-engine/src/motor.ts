@@ -63,6 +63,11 @@ export interface ResultadoCuadro {
   sentidoDecidido: boolean;
   /** Cada pista que cambió un total en este cuadro (de los dos sentidos mientras averigua). */
   eventos: EventoConteo[];
+  /**
+   * Con el sentido fijo: las manchas avanzan al revés de lo ajustado (el celular está montado al
+   * revés). La franja no se mueve; la app avisa para que lo giren.
+   */
+  aguaAlReves: boolean;
 }
 
 const MUESTRAS_PARA_AREA = 60;
@@ -88,6 +93,11 @@ export const SENTIDO_CONTRARIO: Record<SentidoFlujo, SentidoFlujo> = { abajo: "a
 export const AVANCE_PARA_DECIDIR = 1.5;
 /** Lo mismo para confirmar el sentido del conteo anterior. */
 export const AVANCE_PARA_CONFIRMAR = 0.75;
+/**
+ * Con el sentido fijo, lo que se recuerda del avance de cada cuadro al siguiente (se olvida en
+ * unos 8 s): así el aviso de «agua al revés» se apaga solo si giran el celular.
+ */
+const MEMORIA_AVANCE = 0.997;
 
 type MedidaContado = { largo: number; ancho: number; area: number; relacion: number };
 
@@ -108,6 +118,9 @@ export class MotorConteo {
   private conteos: Conteo[];
   /** Lo que avanzaron las manchas con `config.sentido` (negativo: al revés), para decidir. */
   private avance = 0;
+  /** Con el sentido fijo: avance reciente de las manchas (negativo: van al revés) y el aviso. */
+  private vigilancia = 0;
+  private alReves = false;
   /** El total que se informó en el último cuadro (de él salen los sumados). */
   private totalInformado = 0;
   private muestras: Deteccion[] = [];
@@ -192,6 +205,7 @@ export class MotorConteo {
     const todas = [...detecciones, ...descartadas];
     for (const c of this.conteos) this.contarCon(c, todas);
     this.decidirSentido();
+    this.vigilarSentido();
 
     const elegido = this.mostrado;
     const { quietas } = elegido;
@@ -215,6 +229,7 @@ export class MotorConteo {
       sentido: elegido.sentido,
       sentidoDecidido: this.sentidoDecidido,
       eventos: this.eventos,
+      aguaAlReves: this.alReves,
     };
   }
 
@@ -306,6 +321,24 @@ export class MotorConteo {
     const confirmar = (this.config.sentidoConocido ? AVANCE_PARA_CONFIRMAR : AVANCE_PARA_DECIDIR) * this.largoEje;
     if (this.avance >= confirmar) this.conteos = [this.conteos[0]!];
     else if (this.avance <= -AVANCE_PARA_DECIDIR * this.largoEje) this.conteos = [this.conteos[1]!];
+  }
+
+  /**
+   * Con el sentido fijo: suma (con memoria corta) lo que avanzan las manchas que se mueven. Si entre
+   * todas retrocedieron 1,5 largos del canal, el agua corre al revés de lo ajustado; el aviso se
+   * apaga cuando vuelven a avanzar.
+   */
+  private vigilarSentido() {
+    if (this.conteos.length !== 1 || this.config.sentidoAutomatico) return;
+    this.vigilancia *= MEMORIA_AVANCE;
+    for (const p of this.conteos[0]!.rastreador.activas) {
+      const r = p.recorrido;
+      if (p.perdida > 0 || p.edad < CUADROS_PERSISTENCIA || r.length < 2 || estaQuieta(p)) continue;
+      const paso = r[r.length - 1]! - r[r.length - 2]!;
+      if (Math.abs(paso) < this.config.rastreador.distanciaMaxima) this.vigilancia += paso;
+    }
+    if (this.vigilancia <= -AVANCE_PARA_DECIDIR * this.largoEje) this.alReves = true;
+    else if (this.vigilancia >= 0) this.alReves = false;
   }
 
   /** Sin perfil ni fondo: umbral fijo y cada mancha cuenta por su área (como la primera versión). */
@@ -479,6 +512,8 @@ export class MotorConteo {
   reiniciarFondo() {
     this.fondo?.reiniciar();
     this.tiempos = [];
+    this.vigilancia = 0;
+    this.alReves = false;
     if (this.config.sentidoAutomatico) this.conteos = this.crearConteos();
   }
 
