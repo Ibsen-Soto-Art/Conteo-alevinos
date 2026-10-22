@@ -3,6 +3,7 @@ import type { EstadisticasMedidas } from "@contador/domain";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useMotorCompartido } from "../../app/MotorContexto";
 import { ajustesDelCampesino } from "./ajustes";
+import { prenderLinterna } from "./linterna";
 import { Captura, bucleDeCuadros, type Geometria } from "./captura";
 
 export type EstadoCamara = "iniciando" | "lista" | "sin-permiso" | "inseguro" | "error";
@@ -92,6 +93,8 @@ export function useConteoEnVivo({
         }
         stream = s;
         video.srcObject = s;
+        // La linterna se prende sola si el celular lo deja (más luz: imagen más nítida).
+        void prenderLinterna(s.getVideoTracks()[0]);
         await video.play().catch(() => {});
         if (!cancelado) setEstado("lista");
       })

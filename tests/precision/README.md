@@ -47,7 +47,7 @@ En la terminal, y guardado en `tests/precision/resultados/AAAA-MM-DD-HH-MM.md` y
 - **Por especie** (solo videos con alevinos): videos, total a mano, total de la app, **error total**, **de más** (lo que sobró en los videos que contaron de más), **de menos** (lo que faltó en los que contaron de menos), **error medio** (promedio sin signo del error de cada video), el peor video y si cumple la meta. Dentro de un mismo video, lo contado de más y de menos se compensa y no se puede separar.
 - **Por especie exacta:** lo mismo, solo para los videos con `especie_exacta` (por ejemplo los distintos *Prochilodus*).
 - **Sin alevinos:** por tipo (`vacio`, `burbujas`, `basura`), cuántos contó la app en total y el peor video. La meta es **0**.
-- **Por video:** a mano, app, diferencia, error, si cumple la meta y cómo encontró el canal (`4 marcas · 9,8 px/cm` o `sin marcas`).
+- **Por video:** a mano, app, diferencia, error, si cumple la meta y cómo encontró el canal (`4 marcas · 9,8 px/cm` o `sin marcas`: entonces se cuenta con la imagen entera).
 - **No medidos:** videos de la plantilla que no están en la carpeta o que ffmpeg no pudo leer.
 
 El `.csv` trae una fila por video con luz, agua, flujo, celular, tipo, especie exacta, perfil y canal, para filtrar en una hoja de cálculo (por ejemplo, ver si el error sube con poca luz).

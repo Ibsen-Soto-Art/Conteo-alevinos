@@ -34,7 +34,7 @@ Con las marcas, la app:
 1. Sabe **dónde está el canal** y procesa solo esa zona, con más detalle.
 2. Calcula **cuántos píxeles mide un centímetro** y usa los largos en cm del perfil de la especie.
 
-Si no encuentra las 4 marcas, la app sigue funcionando: busca la zona iluminada y aprende el tamaño de los alevinos con la Prueba de 100. En `/laboratorio` se ve si las encontró y la medida en píxeles por centímetro.
+Si no encuentra las 4 marcas, la app sigue funcionando: cuenta con la **imagen entera** (la franja amarilla va de borde a borde) y aprende el tamaño de los alevinos con la Prueba de 100. En `/laboratorio` se ve si las encontró y la medida en píxeles por centímetro.
 
 Las marcas son fijas: la app las aprende como parte del fondo y nunca las cuenta como alevinos.
 

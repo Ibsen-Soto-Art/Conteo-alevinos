@@ -29,11 +29,19 @@ describe("análisis del canal", () => {
     expect(a.zona).toEqual({ x: 46, y: 46, ancho: 228, alto: 388 });
   });
 
-  it("sin marcas recorta la zona iluminada y no hay escala", () => {
+  it("sin marcas se cuenta con el cuadro entero (la franja va de borde a borde) y no hay escala", () => {
+    // Antes recortaba la zona clara más grande: con luz de día (arena, una pared blanca) era
+    // cualquier parte de la imagen y la franja salía cortada, distinta cada vez.
     const a = analizarCanal(canal([], false));
-    expect(a.fuente).toBe("luz");
+    expect(a.fuente).toBe("todo");
     expect(a.pxPorCm).toBeNull();
-    expect(a.zona).toEqual({ x: 40, y: 40, ancho: 240, alto: 400 });
+    expect(a.zona).toEqual({ x: 0, y: 0, ancho: 320, alto: 480 });
+  });
+
+  it("sin marcas, una zona clara en un rincón (una pared al sol) no recorta la imagen", () => {
+    const c = cuadroConFiguras([], 320, 480, 70);
+    for (let y = 0; y < 480; y++) for (let x = 200; x < 320; x++) c.datos[y * 320 + x] = 220;
+    expect(analizarCanal(c).zona).toEqual({ x: 0, y: 0, ancho: 320, alto: 480 });
   });
 
   it("con solo 3 marcas no inventa la escala", () => {
@@ -42,7 +50,8 @@ describe("análisis del canal", () => {
     const a = analizarCanal(c);
     expect(a.marcas).toHaveLength(3);
     expect(a.pxPorCm).toBeNull();
-    expect(a.fuente).toBe("luz");
+    expect(a.fuente).toBe("todo");
+    expect(a.zona).toEqual({ x: 0, y: 0, ancho: 320, alto: 480 });
   });
 
   it("un alevino o una sombra redonda en el canal no se toman por marcas", () => {

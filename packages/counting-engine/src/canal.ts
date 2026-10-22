@@ -18,8 +18,8 @@ export interface AnalisisCanal {
   marcas: Marca[];
   /** Píxeles por centímetro en el cuadro analizado; null si no están las 4 marcas. */
   pxPorCm: number | null;
-  /** De dónde salió la zona: las 4 marcas, la parte iluminada o el cuadro entero. */
-  fuente: "marcas" | "luz" | "todo";
+  /** De dónde salió la zona: las 4 marcas, o el cuadro entero si no están. */
+  fuente: "marcas" | "todo";
 }
 
 /**
@@ -75,8 +75,10 @@ export function umbralOtsu(datos: Uint8Array | Uint8ClampedArray): number {
 
 /**
  * Busca el canal en un cuadro completo (mejor si es la combinación de varios con
- * `combinarMaximo`): la zona iluminada más grande y, dentro, las 4 marcas cuadradas de cinta en
- * sus esquinas. Con las 4 marcas sabe cuántos píxeles mide un centímetro.
+ * `combinarMaximo`): la zona iluminada más grande y, en sus esquinas, las 4 marcas cuadradas de
+ * cinta. Con las 4 marcas se cuenta solo entre ellas y se sabe cuántos píxeles mide un centímetro.
+ * Sin ellas se cuenta con el cuadro entero: la zona clara sola no es confiable (con luz de día es
+ * una pared o el suelo) y la franja salía cortada, distinta cada vez que se abría la cámara.
  */
 export function analizarCanal(cuadro: CuadroGris): AnalisisCanal {
   const { ancho, alto, datos } = cuadro;
@@ -130,7 +132,7 @@ export function analizarCanal(cuadro: CuadroGris): AnalisisCanal {
   const lados = marcas.map((m) => m.lado);
   const parejas = lados.length === 4 && Math.max(...lados) / Math.min(...lados) <= 1.35;
   const sinCaja = marcas.map(({ x, y, lado }) => ({ x, y, lado }));
-  if (!parejas) return { zona: zonaLuz, marcas: sinCaja, pxPorCm: null, fuente: "luz" };
+  if (!parejas) return { ...todo, marcas: sinCaja };
 
   const mx0 = Math.min(...marcas.map((m) => m.caja[0]));
   const my0 = Math.min(...marcas.map((m) => m.caja[1]));

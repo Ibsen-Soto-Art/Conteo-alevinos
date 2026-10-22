@@ -5,6 +5,7 @@ import { guardarAjustes, leerAjustes } from "../conteo/ajustes";
 import { Captura, bucleDeCuadros, recorrerCuadroPorCuadro, type Geometria } from "../conteo/captura";
 import { COLOR_DESCARTE, dibujarEscena, pintarMascara, type Destello } from "../conteo/dibujo";
 import { type Controles, type MensajeDelMotor } from "../conteo/protocolo";
+import { prenderLinterna } from "../conteo/linterna";
 import { useMotor } from "../conteo/useMotor";
 import { PanelControles } from "./PanelControles";
 import { registroCsv, resumenRegistro, type FilaRegistro } from "./registro";
@@ -30,8 +31,7 @@ function minutos(segundos: number): string {
 
 const NOMBRE_FUENTE: Record<Geometria["canal"]["fuente"], string> = {
   marcas: "las 4 marcas",
-  luz: "la zona iluminada (sin las 4 marcas)",
-  todo: "el cuadro entero (no se ve el borde del canal)",
+  todo: "el cuadro entero (no están las 4 marcas)",
 };
 
 /** Las marcas del canal (en px del video) pasadas al recorte, para dibujarlas. */
@@ -341,6 +341,7 @@ export function Laboratorio() {
       apagarFuente();
       video.removeAttribute("src");
       video.srcObject = stream;
+      void prenderLinterna(stream.getVideoTracks()[0]);
       empezarFuente("camara");
       await video.play();
     } catch (e) {

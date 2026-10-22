@@ -103,9 +103,9 @@ export function porcentaje(x: number, conSigno = true): string {
   return `${(conSigno ? decimal : sinSigno).format(x * 100)} %`;
 }
 
-/** «4 marcas · 9,6 px/cm», «sin marcas (luz)» o «sin marcas (todo)». */
-export function describirCanal(fuente: "marcas" | "luz" | "todo", pxPorCm: number | null): string {
-  return fuente === "marcas" && pxPorCm ? `4 marcas · ${sinSigno.format(pxPorCm)} px/cm` : `sin marcas (${fuente})`;
+/** «4 marcas · 9,6 px/cm» o «sin marcas». */
+export function describirCanal(fuente: "marcas" | "todo", pxPorCm: number | null): string {
+  return fuente === "marcas" && pxPorCm ? `4 marcas · ${sinSigno.format(pxPorCm)} px/cm` : "sin marcas";
 }
 
 const marcaMeta = (error: number, meta: number) => (Math.abs(error) <= meta ? "✓" : "✗");

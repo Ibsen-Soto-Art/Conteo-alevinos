@@ -25,17 +25,17 @@ describe("canal y recorte", () => {
   });
 
   it("sin marcas no hay escala", () => {
-    const g = geometriaDe(canalEnVideo({ ...analisis, pxPorCm: null, fuente: "luz" }, { ancho: 640, alto: 360 }, { ancho: 640, alto: 360 }));
+    const g = geometriaDe(canalEnVideo({ ...analisis, pxPorCm: null, fuente: "todo" }, { ancho: 640, alto: 360 }, { ancho: 640, alto: 360 }));
     expect(g.pxPorCmRecorte).toBeNull();
   });
 
   it("un recorte pequeño no se agranda", () => {
-    const g = geometriaDe({ zona: { x: 0, y: 0, ancho: 200, alto: 300 }, marcas: [], pxPorCm: null, fuente: "luz" });
+    const g = geometriaDe({ zona: { x: 0, y: 0, ancho: 200, alto: 300 }, marcas: [], pxPorCm: null, fuente: "todo" });
     expect(g.recorte).toEqual({ ancho: 200, alto: 300 });
   });
 
   it("lleva un punto del recorte a píxeles del video", () => {
-    const g = geometriaDe({ zona: { x: 100, y: 50, ancho: 960, alto: 600 }, marcas: [], pxPorCm: null, fuente: "luz" });
+    const g = geometriaDe({ zona: { x: 100, y: 50, ancho: 960, alto: 600 }, marcas: [], pxPorCm: null, fuente: "todo" });
     expect(g.recorte).toEqual({ ancho: 480, alto: 300 });
     expect(recorteAVideo(240, 150, g)).toEqual({ x: 580, y: 350 });
   });

@@ -77,11 +77,11 @@ describe("manejador: canal, perfil y fondo", () => {
     return datos.buffer;
   }
 
-  it("con varios cuadros completos encuentra el canal (la zona iluminada)", () => {
+  it("con varios cuadros completos analiza el canal; sin las 4 marcas cuenta con el cuadro entero", () => {
     const manejar = crearManejador();
     expect(manejar({ tipo: "canal", ancho: 80, alto: 120, rgba: cuadroCanal(), ultimo: false })).toBeNull();
     const r = manejar({ tipo: "canal", ancho: 80, alto: 120, rgba: cuadroCanal(), ultimo: true });
-    expect(r).toMatchObject({ tipo: "canal", ancho: 80, alto: 120, analisis: { fuente: "luz", zona: { x: 10, y: 10, ancho: 60, alto: 100 } } });
+    expect(r).toMatchObject({ tipo: "canal", ancho: 80, alto: 120, analisis: { fuente: "todo", zona: { x: 0, y: 0, ancho: 80, alto: 120 } } });
   });
 
   it("con fondo, primero aprende el canal vacío y lo avisa", () => {
