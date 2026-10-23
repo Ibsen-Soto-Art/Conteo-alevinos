@@ -34,10 +34,17 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       # ffmpeg: lo usan las pruebas de precisión (videos sintéticos) y Playwright (cámara falsa).
+      # Los servidores de Ubuntu a veces se quedan pegados: cada intento tiene un tiempo máximo y se
+      # reintenta hasta 3 veces (antes una instalación trabada se comía los 30 minutos del trabajo).
       - name: Instalar ffmpeg
         run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends ffmpeg
+          for intento in 1 2 3; do
+            timeout 240 sudo apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=30 update &&
+              timeout 300 sudo apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=30 install -y --no-install-recommends ffmpeg && break
+            echo "Intento $intento falló; se vuelve a intentar."
+            [ "$intento" = 3 ] && exit 1
+            sleep 15
+          done
 
       - name: Revisar tipos
         run: pnpm typecheck
@@ -57,7 +64,13 @@ jobs:
           retention-days: 7
 
       - name: Instalar Chromium para Playwright
-        run: pnpm --filter @contador/web exec playwright install --with-deps chromium
+        run: |
+          for intento in 1 2 3; do
+            timeout 480 pnpm --filter @contador/web exec playwright install --with-deps chromium && break
+            echo "Intento $intento falló; se vuelve a intentar."
+            [ "$intento" = 3 ] && exit 1
+            sleep 15
+          done
 
       - name: Pruebas de punta a punta (sin scroll, conteo en vivo, sin internet)
         run: pnpm e2e
@@ -87,8 +100,13 @@ jobs:
 
       - name: Instalar ffmpeg y las librerías de datos (sin PyTorch)
         run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends ffmpeg
+          for intento in 1 2 3; do
+            timeout 180 sudo apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=30 update &&
+              timeout 240 sudo apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=30 install -y --no-install-recommends ffmpeg && break
+            echo "Intento $intento falló; se vuelve a intentar."
+            [ "$intento" = 3 ] && exit 1
+            sleep 15
+          done
           pip install -r ml/requirements-pruebas.txt
 
       - name: Pruebas de los pasos de datos
