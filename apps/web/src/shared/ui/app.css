@@ -719,6 +719,32 @@ html:not(.modo-laboratorio) body {
   right: 8px;
 }
 
+/* Linterna: arriba a la derecha (en Contando, en la tercera fila: arriba van luz, bolsa y flujo). */
+.boton-linterna {
+  position: absolute;
+  right: 8px;
+  top: 8px;
+  min-height: var(--toque);
+  padding: 0 14px;
+  border-radius: 999px;
+  font-size: clamp(0.95rem, min(2.4dvh, 4.2vw), 1.1rem);
+}
+
+.boton-linterna svg {
+  font-size: 1.4em;
+}
+
+/* Prendida: amarilla (además del dibujo con rayos: nunca solo el color). */
+.boton-linterna[aria-pressed="true"] {
+  background: #ffd54a;
+  border-color: #9a6b00;
+  color: var(--texto);
+}
+
+.camara-completa .boton-linterna {
+  top: calc(max(8px, env(safe-area-inset-top)) + 2 * clamp(40px, 6dvh, 48px) + 8px);
+}
+
 /* El agua sube (celular al revés): en el medio de la imagen, que no se pase por alto. */
 .camara-reves {
   position: absolute;

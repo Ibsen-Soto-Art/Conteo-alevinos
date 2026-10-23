@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode, type RefObject } from "react";
 import { useMotorCompartido } from "../../app/MotorContexto";
 import type { EstadoFlujo } from "@contador/counting-engine";
-import { IconoAviso, IconoChulo, IconoProblema, IconoSol } from "../../shared/ui/Iconos";
+import { IconoAviso, IconoChulo, IconoLinterna, IconoLinternaApagada, IconoProblema, IconoSol } from "../../shared/ui/Iconos";
 import { recorteAVideo, type Geometria } from "./captura";
 import { encuadreCanal, encuadreCubrir, flujoVertical, posicionParaVerFranja, type Controles, type Encuadre, type MensajeDelMotor } from "./protocolo";
 import type { EstadoCamara, Luz } from "./useConteoEnVivo";
@@ -230,6 +230,27 @@ export function AvisoAlReves({ alReves, className = "" }: { alReves: boolean; cl
     <span className={`estado estado-problema ${className}`} role="alert">
       <IconoProblema /> El agua sube: gire el celular
     </span>
+  );
+}
+
+/**
+ * Botón para prender y apagar la linterna del celular. Solo aparece si el celular deja manejarla
+ * desde la página. Prendida: fondo amarillo y linterna con rayos; apagada: blanca y tachada.
+ */
+export function BotonLinterna({
+  linterna,
+  onAlternar,
+  className = "",
+}: {
+  linterna: { disponible: boolean; prendida: boolean };
+  onAlternar: () => void;
+  className?: string;
+}) {
+  if (!linterna.disponible) return null;
+  return (
+    <button type="button" className={`boton boton-linterna ${className}`} aria-pressed={linterna.prendida} onClick={onAlternar}>
+      {linterna.prendida ? <IconoLinterna /> : <IconoLinternaApagada />} Linterna
+    </button>
   );
 }
 

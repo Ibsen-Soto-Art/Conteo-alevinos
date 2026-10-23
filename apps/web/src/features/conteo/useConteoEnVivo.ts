@@ -3,7 +3,7 @@ import type { EstadisticasMedidas } from "@contador/domain";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useMotorCompartido } from "../../app/MotorContexto";
 import { ajustesDelCampesino } from "./ajustes";
-import { prenderLinterna } from "./linterna";
+import { guardarLinternaPreferida, linternaDisponible, linternaPreferida, ponerLinterna } from "./linterna";
 import { Captura, bucleDeCuadros, type Geometria } from "./captura";
 
 export type EstadoCamara = "iniciando" | "lista" | "sin-permiso" | "inseguro" | "error";
@@ -38,6 +38,9 @@ export function useConteoEnVivo({
   const [flujo, setFlujo] = useState<EstadoFlujo | null>(null);
   /** Los alevinos suben en la pantalla: el celular está montado al revés. */
   const [aguaAlReves, setAguaAlReves] = useState(false);
+  /** La linterna del celular: si se puede manejar desde la página y si está prendida. */
+  const [linterna, setLinterna] = useState({ disponible: false, prendida: false });
+  const pistaCamara = useRef<MediaStreamTrack | null>(null);
   /** Solo en ?demo: un aviso de flujo forzado por las pruebas, que gana sobre lo medido. */
   const flujoForzado = useRef<EstadoFlujo | null | undefined>(undefined);
   const [geometria, setGeometria] = useState<Geometria | null>(null);
@@ -105,8 +108,15 @@ export function useConteoEnVivo({
         video.srcObject = s;
         // Si el teléfono corta la cámara (otra app la usa, se fue a segundo plano), se vuelve a abrir.
         s.getVideoTracks()[0]?.addEventListener("ended", reabrir);
-        // La linterna se prende sola si el celular lo deja (más luz: imagen más nítida).
-        void prenderLinterna(s.getVideoTracks()[0]);
+        // La linterna: si el celular deja manejarla, aparece el botón; queda como se eligió la última vez.
+        const pista = s.getVideoTracks()[0];
+        pistaCamara.current = pista ?? null;
+        const disponible = linternaDisponible(pista);
+        setLinterna({ disponible, prendida: false });
+        if (disponible && linternaPreferida())
+          void ponerLinterna(pista, true).then((ok) => {
+            if (ok && !cancelado) setLinterna({ disponible: true, prendida: true });
+          });
         await video.play().catch(() => {});
         if (!cancelado) setEstado("lista");
       })
@@ -117,6 +127,8 @@ export function useConteoEnVivo({
       });
     return () => {
       cancelado = true;
+      pistaCamara.current = null;
+      setLinterna({ disponible: false, prendida: false });
       document.removeEventListener("visibilitychange", alVolver);
       stream?.getVideoTracks()[0]?.removeEventListener("ended", reabrir);
       stream?.getTracks().forEach((t) => t.stop());
@@ -178,5 +190,14 @@ export function useConteoEnVivo({
     return () => window.removeEventListener("demo-flujo", forzar);
   }, []);
 
-  return { videoRef, estado, luz, flujo, aguaAlReves, ajustes, geometria, pedirEstadisticas, reintentar: () => setIntento((i) => i + 1) };
+  /** El botón de la linterna: la prende o la apaga y recuerda la elección para la próxima vez. */
+  const alternarLinterna = useCallback(async () => {
+    const prendida = !linterna.prendida;
+    if (await ponerLinterna(pistaCamara.current ?? undefined, prendida)) {
+      setLinterna({ disponible: true, prendida });
+      guardarLinternaPreferida(prendida);
+    }
+  }, [linterna.prendida]);
+
+  return { videoRef, estado, luz, flujo, aguaAlReves, linterna, alternarLinterna, ajustes, geometria, pedirEstadisticas, reintentar: () => setIntento((i) => i + 1) };
 }

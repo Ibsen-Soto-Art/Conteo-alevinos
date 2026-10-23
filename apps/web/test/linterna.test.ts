@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { prenderLinterna } from "../src/features/conteo/linterna";
+import { guardarLinternaPreferida, linternaDisponible, linternaPreferida, ponerLinterna, prenderLinterna } from "../src/features/conteo/linterna";
 
 function pista(capacidades: object | undefined, falla = false) {
   return {
@@ -8,22 +8,41 @@ function pista(capacidades: object | undefined, falla = false) {
   } as unknown as MediaStreamTrack & { applyConstraints: ReturnType<typeof vi.fn> };
 }
 
-describe("linterna al abrir la cámara", () => {
-  it("si el celular la tiene, la prende", async () => {
+function almacen() {
+  const datos = new Map<string, string>();
+  return { getItem: (k: string) => datos.get(k) ?? null, setItem: (k: string, v: string) => void datos.set(k, v) };
+}
+
+describe("linterna", () => {
+  it("si el celular la tiene, se puede prender y apagar", async () => {
     const p = pista({ torch: true });
+    expect(linternaDisponible(p)).toBe(true);
+    expect(await ponerLinterna(p, true)).toBe(true);
+    expect(await ponerLinterna(p, false)).toBe(true);
+    expect(p.applyConstraints.mock.calls).toEqual([[{ advanced: [{ torch: true }] }], [{ advanced: [{ torch: false }] }]]);
     expect(await prenderLinterna(p)).toBe(true);
-    expect(p.applyConstraints).toHaveBeenCalledWith({ advanced: [{ torch: true }] });
   });
 
-  it("si no la ofrece (o el navegador no sabe de capacidades), no hace nada y no falla", async () => {
+  it("si no la ofrece (o el navegador no sabe de capacidades), no hay botón y no hace nada", async () => {
     const sin = pista({});
-    expect(await prenderLinterna(sin)).toBe(false);
+    expect(linternaDisponible(sin)).toBe(false);
+    expect(await ponerLinterna(sin, true)).toBe(false);
     expect(sin.applyConstraints).not.toHaveBeenCalled();
-    expect(await prenderLinterna(pista(undefined))).toBe(false);
-    expect(await prenderLinterna(undefined)).toBe(false);
+    expect(linternaDisponible(pista(undefined))).toBe(false);
+    expect(await ponerLinterna(undefined, true)).toBe(false);
   });
 
-  it("si el celular dice que sí pero falla al prenderla, sigue sin error", async () => {
-    expect(await prenderLinterna(pista({ torch: true }, true))).toBe(false);
+  it("si el celular dice que sí pero falla, sigue sin error", async () => {
+    expect(await ponerLinterna(pista({ torch: true }, true), true)).toBe(false);
+  });
+
+  it("recuerda si la persona la apagó; por defecto, prendida", () => {
+    const a = almacen();
+    expect(linternaPreferida(a)).toBe(true);
+    guardarLinternaPreferida(false, a);
+    expect(linternaPreferida(a)).toBe(false);
+    guardarLinternaPreferida(true, a);
+    expect(linternaPreferida(a)).toBe(true);
+    expect(linternaPreferida(undefined)).toBe(true);
   });
 });

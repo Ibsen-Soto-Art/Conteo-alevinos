@@ -102,6 +102,24 @@ export const IconoSol = (p: Props) => (
   </Icono>
 );
 
+/** Linterna prendida: con rayos de luz. */
+export const IconoLinterna = (p: Props) => (
+  <Icono {...p}>
+    <path d="M8 10h8l-1.5 4v7h-5v-7L8 10z" />
+    <path d="M8 10V8h8v2" />
+    <path d="M12 2v2.5M6 3.5l1.3 1.8M18 3.5l-1.3 1.8" />
+  </Icono>
+);
+
+/** Linterna apagada: tachada, sin rayos. */
+export const IconoLinternaApagada = (p: Props) => (
+  <Icono {...p}>
+    <path d="M8 10h8l-1.5 4v7h-5v-7L8 10z" />
+    <path d="M8 10V8h8v2" />
+    <path d="M4 4l16 16" />
+  </Icono>
+);
+
 export const IconoBolsa = (p: Props) => (
   <Icono {...p}>
     <path d="M7 4h10l-1.5 3c3 2 4.5 5 4.5 8a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5c0-3 1.5-6 4.5-8L7 4z" />
