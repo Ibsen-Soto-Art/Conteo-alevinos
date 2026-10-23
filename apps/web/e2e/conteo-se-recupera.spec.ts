@@ -47,7 +47,13 @@ test("el conteo abierto sigue después de recargar, de volver atrás y de que se
   await expect(page.locator(".camara-bolsa")).toHaveText(/Bolsa 2/);
 
   // 3. El teléfono corta la cámara: se vuelve a abrir sola y sigue contando.
-  await expect(page.locator(".camara video")).toBeVisible();
+  const pistaViva = () =>
+    page.evaluate(() => {
+      const pista = ((document.querySelector(".camara video") as HTMLVideoElement | null)?.srcObject as MediaStream | null)?.getVideoTracks()[0];
+      return pista?.readyState === "live" ? pista.id : "";
+    });
+  // Primero, que la cámara haya terminado de abrirse al volver a Contando.
+  await expect.poll(pistaViva, { timeout: 15_000 }).not.toBe("");
   const cortada = await page.evaluate(() => {
     const video = document.querySelector(".camara video") as HTMLVideoElement;
     const pista = (video.srcObject as MediaStream).getVideoTracks()[0]!;
@@ -55,9 +61,7 @@ test("el conteo abierto sigue después de recargar, de volver atrás y de que se
     pista.dispatchEvent(new Event("ended"));
     return pista.id;
   });
-  await expect
-    .poll(() => page.evaluate(() => ((document.querySelector(".camara video") as HTMLVideoElement).srcObject as MediaStream | null)?.getVideoTracks()[0]?.id ?? ""), { timeout: 15_000 })
-    .not.toBe(cortada);
+  await expect.poll(async () => { const id = await pistaViva(); return id !== "" && id !== cortada; }, { timeout: 15_000 }).toBe(true);
   const tras = await leer(page, ".contador-numero");
   await expect.poll(() => leer(page, ".contador-numero"), { timeout: 45_000 }).toBeGreaterThan(tras);
 
