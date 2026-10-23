@@ -54,3 +54,13 @@ Los peces tienden a **nadar contra la corriente**. Si pueden, se devuelven por e
 ## Más luz, menos borroso
 
 Con poca luz, la cámara deja el obturador abierto más tiempo y los alevinos rápidos salen **borrosos** (una mancha alargada y pálida), y la app los mide mal. **Más luz LED** por debajo hace que la cámara use un obturador más corto y la imagen salga nítida. Si la app dice «Poca luz», suba la luz o tape el sol directo sobre el canal.
+
+## Canal opaco (acero galvanizado) con luz desde arriba
+
+Si el canal no deja pasar luz, se trabaja con luz desde arriba. La app aprende cuánto varían las ondas y los reflejos de cada punto y no los cuenta, pero conviene ayudarle:
+
+- **Luz pareja, de lado y alta**, no justo encima del agua: el reflejo de una lámpara (o de la linterna del celular) que cae directo en la cámara es un punto quemado que oscurece el resto de la imagen. Pruebe con la linterna del celular prendida y apagada y quédese con la que no deje un reflejo grande.
+- **Pintura o fondo claro y mate** en la zona de la franja: los alevinos (oscuros por encima) contrastan mejor.
+- **Agua tranquila en la zona de la franja:** menos inclinación y un chorro de entrada suave hacen menos ondas.
+- **Al empezar**, deje correr el agua unos segundos antes de echar los alevinos y toque «Volver a cero» si el número no está en 0.
+

@@ -15,6 +15,7 @@ Cada archivo guarda **una** decisión: qué se decidió, por qué y qué se desc
 | [0009](0009-contar-sin-esperar-el-fondo.md) | Contar sin esperar el fondo | Aceptada |
 | [0010](0010-sentido-del-agua-automatico.md) | La app averigua sola hacia dónde corre el agua | Reemplazada por 0011 en la app |
 | [0011](0011-franja-fija-abajo.md) | La franja va fija abajo; si el agua sube, la app avisa | Aceptada |
+| [0012](0012-fondo-con-variacion.md) | El fondo aprende cuánto varía cada punto (ondas y reflejos) | Aceptada |
 
 ## Formato
 

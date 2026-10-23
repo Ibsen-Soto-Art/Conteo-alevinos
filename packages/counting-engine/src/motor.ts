@@ -196,8 +196,8 @@ export class MotorConteo {
     }
     this.largoEje = this.config.sentido === "abajo" || this.config.sentido === "arriba" ? cuadro.alto : cuadro.ancho;
 
-    // Se cuenta desde el primer cuadro: mientras aprende el fondo, con el umbral fijo.
-    if (this.fondo && !this.fondo.listo) this.fondo.aprender(cuadro);
+    // Se cuenta desde el primer cuadro: los primeros 10 (⅓ s) con el umbral fijo, luego con el fondo.
+    if (this.fondo && !this.fondo.usable) this.fondo.aprender(cuadro);
 
     const { detecciones, descartadas } = this.config.perfil || this.fondo ? this.detectar(cuadro) : this.detectarComoAntes(cuadro);
 
@@ -356,7 +356,7 @@ export class MotorConteo {
       this.mascara = new Uint8Array(n);
       this.temporal = new Uint8Array(n);
     }
-    if (this.fondo?.listo) {
+    if (this.fondo?.usable) {
       this.fondo.primerPlano(cuadro, this.mascara);
     } else {
       const umbral = this.config.detector.umbral;
