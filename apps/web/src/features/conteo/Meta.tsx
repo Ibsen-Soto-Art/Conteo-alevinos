@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { navegar } from "../../app/rutas";
 import { META_INICIAL, META_PASO, cambiarMeta } from "../../app/sesion";
 import { useSesion } from "../../app/SesionContexto";
@@ -14,7 +15,10 @@ export function Meta() {
   const sinMeta = estado.meta === null;
   const meta = estado.meta ?? META_INICIAL;
   const fijar = (m: number | null) => despachar({ tipo: "fijarMeta", meta: m });
+  // Con un conteo abierto (se volvió atrás desde Contando) se va al Inicio, que ofrece seguirlo.
+  const [conConteo] = useState(() => estado.conteo !== null);
 
+  if (conConteo) return <Redirigir a="inicio" />;
   if (!estado.lote) return <Redirigir a="prueba" />;
 
   return (

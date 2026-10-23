@@ -1,13 +1,18 @@
+import { useState } from "react";
 import { navegar } from "../../app/rutas";
 import { useSesion } from "../../app/SesionContexto";
 import { ESPECIES, TALLAS } from "../../shared/catalogo";
 import { BarraPasos } from "../../shared/ui/BarraPasos";
 import { IconoChulo, IconoSiguiente } from "../../shared/ui/Iconos";
 import { Pantalla } from "../../shared/ui/Pantalla";
+import { Redirigir } from "../../shared/ui/Redirigir";
 
 export function QuePez() {
   const { estado, despachar } = useSesion();
   const listo = estado.especie !== null && estado.talla !== null;
+  // Con un conteo abierto (se volvió atrás desde Contando) se va al Inicio, que ofrece seguirlo.
+  const [conConteo] = useState(() => estado.conteo !== null);
+  if (conConteo) return <Redirigir a="inicio" />;
 
   return (
     <Pantalla

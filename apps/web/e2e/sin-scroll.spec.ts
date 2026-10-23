@@ -79,6 +79,14 @@ async function revisar(pagina: Page) {
 
 const PANTALLAS: { nombre: string; ruta: string; antes?: (p: Page) => Promise<void> }[] = [
   { nombre: "inicio", ruta: "" },
+  {
+    nombre: "inicio: seguir contando (conteo abierto)",
+    ruta: "contando",
+    antes: async (p) => {
+      await p.evaluate(() => (location.hash = "#/"));
+      await expect(p.getByRole("button", { name: /Seguir contando/ })).toBeVisible();
+    },
+  },
   { nombre: "qué pez", ruta: "pez" },
   { nombre: "prueba de 100: resultado", ruta: "prueba" },
   {

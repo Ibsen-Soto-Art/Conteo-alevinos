@@ -96,4 +96,40 @@ describe("acciones", () => {
     await esperarGuardado();
     expect(almacen.leer().guardado).toBe(false);
   });
+
+  it("no se empieza un conteo encima de otro abierto", () => {
+    const { almacen, acciones } = preparar({ pruebaApp: 97 });
+    acciones.aceptarPrueba();
+    acciones.empezarConteo();
+    const abierto = almacen.leer().conteo;
+    almacen.despachar({ tipo: "sumar", cantidad: 300 });
+    expect(acciones.empezarConteo()).toBe(false);
+    expect(almacen.leer().conteo).toBe(abierto);
+    expect(almacen.leer().crudo).toBe(300);
+  });
+
+  it("terminar desde el Inicio cierra la bolsa abierta y deja el conteo en el historial", async () => {
+    const { almacen, acciones, guardado } = preparar({ pruebaApp: 97 });
+    acciones.aceptarPrueba();
+    acciones.empezarConteo();
+    almacen.despachar({ tipo: "sumar", cantidad: 970 });
+    expect(acciones.terminarDesdeInicio()).toBe(true);
+    await esperarGuardado();
+    expect(almacen.leer().conteo).toBeNull();
+    expect(almacen.leer().historial[0]!.bolsas).toEqual([1000]);
+    expect(guardado.bolsas).toHaveLength(1);
+    expect(guardado.conteos.at(-1)!.fin).not.toBeNull();
+  });
+
+  it("terminar desde el Inicio sin nada contado cierra el conteo sin ir al historial", async () => {
+    const { almacen, acciones, guardado } = preparar({ pruebaApp: 97 });
+    acciones.aceptarPrueba();
+    acciones.empezarConteo();
+    expect(acciones.terminarDesdeInicio()).toBe(false);
+    await esperarGuardado();
+    expect(almacen.leer().conteo).toBeNull();
+    expect(almacen.leer().historial).toEqual([]);
+    expect(guardado.conteos.at(-1)!.fin).not.toBeNull();
+  });
 });
+

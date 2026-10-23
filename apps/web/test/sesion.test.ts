@@ -109,10 +109,27 @@ describe("sesión de conteo", () => {
     expect(reducir(e, { tipo: "terminar", fin: "" })).toBe(e);
   });
 
-  it("empezar limpia el lote, el conteo y las bolsas, pero no el historial", () => {
-    const e = reducir(estadoDeEjemplo(), { tipo: "empezar" });
+  it("empezar (sin conteo abierto) limpia el lote y la prueba, pero no el historial", () => {
+    const sinConteo = reducir(estadoDeEjemplo(), { tipo: "abandonarConteo" });
+    const e = reducir(sinConteo, { tipo: "empezar" });
     expect(e).toMatchObject({ especie: null, talla: null, lote: null, conteo: null, crudo: 0, bolsas: [] });
     expect(e.historial).toHaveLength(1);
+  });
+
+  it("con un conteo abierto no se empieza otro encima: ni desde el Inicio ni volviendo atrás", () => {
+    const abierto = estadoDeEjemplo();
+    expect(reducir(abierto, { tipo: "empezar" })).toBe(abierto);
+    expect(reducir(abierto, { tipo: "empezarConteo", conteo: { ...abierto.conteo!, id: "otro" } })).toBe(abierto);
+  });
+
+  it("restaurar deja el conteo abierto tal como iba", () => {
+    const ej = estadoDeEjemplo();
+    const e = reducir(estadoInicial(), {
+      tipo: "restaurar",
+      enCurso: { especie: ej.especie!, talla: ej.talla!, lote: ej.lote!, meta: ej.meta, conteo: ej.conteo!, crudo: ej.crudo, bolsas: ej.bolsas, pausado: false },
+    });
+    expect(e).toMatchObject({ conteo: ej.conteo, lote: ej.lote, crudo: 740, bolsas: ej.bolsas });
+    expect(numeroBolsaAbierta(e)).toBe(3);
   });
 
   it("sin ?demo arranca vacío", () => {

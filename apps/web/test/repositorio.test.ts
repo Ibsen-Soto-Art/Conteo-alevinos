@@ -57,4 +57,16 @@ describe("repositorio en IndexedDB", () => {
     await repo.guardarConteo(conteo("c1", "2026-10-14T10:00:00.000Z"));
     expect(await repo.leerHistorial()).toEqual([]);
   });
+
+  it("al abrir la app no se cierra el conteo que se va a seguir; los demás abiertos sí", async () => {
+    const repo = repoNuevo();
+    await repo.guardarLote(lote);
+    await repo.guardarConteo(conteo("viejo", null));
+    await repo.guardarBolsa(bolsa("b1", "viejo", 1, 1000));
+    await repo.guardarConteo(conteo("sigue", null));
+    await repo.guardarBolsa(bolsa("b2", "sigue", 1, 500));
+    await repo.cerrarConteosAbiertos("sigue");
+    expect((await repo.leerHistorial()).map((h) => h.id)).toEqual(["viejo"]);
+  });
 });
+

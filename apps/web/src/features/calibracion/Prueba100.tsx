@@ -1,5 +1,5 @@
 import { calcularCalibracion, perfilDe } from "@contador/domain";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { PRUEBA_A_MANO } from "../../app/acciones";
 import { useMotorCompartido } from "../../app/MotorContexto";
 import { navegar } from "../../app/rutas";
@@ -21,15 +21,18 @@ export function Prueba100() {
   const { estado, despachar, acciones } = useSesion();
   const motor = useMotorCompartido();
   const terminada = estado.pruebaApp !== null;
+  // Con un conteo abierto (se volvió atrás desde Contando) se va al Inicio, que ofrece seguirlo.
+  const [conConteo] = useState(() => estado.conteo !== null);
   const enVivo = estado.pruebaEnVivo;
   const perfil = useMemo(() => (estado.especie && estado.talla ? perfilDe(estado.especie, estado.talla) : null), [estado.especie, estado.talla]);
-  const vivo = useConteoEnVivo({ activo: !terminada, onSumados: (n) => despachar({ tipo: "sumarPrueba", cantidad: n }), perfil });
-  useWakeLock(!terminada);
+  const vivo = useConteoEnVivo({ activo: !terminada && !conConteo, onSumados: (n) => despachar({ tipo: "sumarPrueba", cantidad: n }), perfil });
+  useWakeLock(!terminada && !conConteo);
 
   const contados = estado.pruebaApp ?? enVivo;
   const resultado = terminada ? calcularCalibracion([{ contadosAMano: MANO, contadosPorApp: contados }]) : null;
   const repetir = () => despachar({ tipo: "repetirPrueba" });
 
+  if (conConteo) return <Redirigir a="inicio" />;
   if (!estado.especie || !estado.talla) return <Redirigir a="pez" />;
 
   return (

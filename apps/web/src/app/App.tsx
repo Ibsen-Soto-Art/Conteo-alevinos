@@ -9,7 +9,7 @@ import { Conteos } from "../features/historial/Conteos";
 import { Inicio } from "../features/inicio/Inicio";
 import { QuePez } from "../features/lotes/QuePez";
 import { AvisoGirar } from "../shared/ui/AvisoGirar";
-import { useRuta, type Ruta } from "./rutas";
+import { rutaDesdeHash, useRuta, type Ruta } from "./rutas";
 import { useActualizacion } from "./useActualizacion";
 import { MotorProveedor } from "./MotorContexto";
 import { crearRepositorio, repositorioDeEjemplo } from "../shared/datos/repositorio";
@@ -36,6 +36,8 @@ const PANTALLAS: Record<Ruta, () => React.JSX.Element> = {
  * pantallas) y no guarda nada, así no mezcla el ejemplo con los conteos reales.
  */
 const DEMO = new URLSearchParams(location.search).has("demo");
+/** En ?demo, el conteo abierto solo para las pantallas que lo necesitan (las demás van antes de contar). */
+const DEMO_CON_CONTEO = ["contando", "bolsa-lista"].includes(rutaDesdeHash(location.hash));
 const repositorio = DEMO ? repositorioDeEjemplo : crearRepositorio();
 
 export function App() {
@@ -43,7 +45,7 @@ export function App() {
   const Pantalla = PANTALLAS[ruta];
   return (
     <SesionProveedor
-      inicial={DEMO ? estadoDeEjemplo() : estadoInicial()}
+      inicial={DEMO ? estadoDeEjemplo(new Date(), { conConteo: DEMO_CON_CONTEO }) : estadoInicial()}
       repo={repositorio}
       cargarAlIniciar={!DEMO}
     >

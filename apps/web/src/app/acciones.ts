@@ -43,13 +43,17 @@ export function crearAcciones(almacen: Almacen, { repo, ahora = () => new Date()
     );
 
   return {
-    /** Lee el historial guardado; antes cierra un conteo que haya quedado abierto. */
-    cargar: () =>
-      repo
-        .cerrarConteosAbiertos()
+    /**
+     * Al abrir la app: cierra los conteos que quedaron abiertos en el teléfono, menos el que se
+     * recuperó para seguir (ver `conConteoAbierto`), y lee el historial guardado.
+     */
+    cargar: () => {
+      return repo
+        .cerrarConteosAbiertos(leer().conteo?.id)
         .then(() => repo.leerHistorial())
         .then((historial) => despachar({ tipo: "cargarHistorial", historial }))
-        .catch(() => despachar({ tipo: "guardado", ok: false })),
+        .catch(() => despachar({ tipo: "guardado", ok: false }));
+    },
 
     /** Prueba de 100 buena → nace el lote con su factor. Devuelve false si la prueba no sirve. */
     aceptarPrueba(): boolean {
@@ -76,7 +80,7 @@ export function crearAcciones(almacen: Almacen, { repo, ahora = () => new Date()
 
     empezarConteo(): boolean {
       const e = leer();
-      if (!e.lote) return false;
+      if (!e.lote || e.conteo) return false;
       const conteo: Conteo = { id: nuevoId(), loteId: e.lote.id, metaPorBolsa: e.meta, inicio: ahora().toISOString(), fin: null };
       despachar({ tipo: "empezarConteo", conteo });
       void guardar(repo.guardarConteo(conteo));
@@ -105,9 +109,24 @@ export function crearAcciones(almacen: Almacen, { repo, ahora = () => new Date()
       void guardar(repo.guardarBolsa(descartarBolsa(ultima)));
     },
 
-    terminar(): boolean {
+    /**
+     * Desde el Inicio, con un conteo abierto: cierra la bolsa abierta si tiene algo y termina. Si
+     * no hay ninguna bolsa, el conteo se cierra sin ir al historial. Devuelve si quedó en el historial.
+     */
+    terminarDesdeInicio(): boolean {
       const e = leer();
       if (!e.conteo) return false;
+      if (enBolsa(e) > 0) this.cerrarBolsa();
+      if (leer().bolsas.some((b) => b.estado === "valida")) return this.terminar();
+      const conteo = { ...e.conteo, fin: ahora().toISOString() };
+      despachar({ tipo: "abandonarConteo" });
+      void guardar(repo.guardarConteo(conteo));
+      return false;
+    },
+
+    terminar(): boolean {
+      const e = leer();
+      if (!e.conteo || !e.bolsas.some((b) => b.estado === "valida")) return false;
       const fin = ahora().toISOString();
       const conteo = { ...e.conteo, fin };
       despachar({ tipo: "terminar", fin });

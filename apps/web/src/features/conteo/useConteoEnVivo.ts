@@ -79,6 +79,16 @@ export function useConteoEnVivo({
     }
     let cancelado = false;
     let stream: MediaStream | null = null;
+    const reabrir = () => {
+      if (!cancelado) setIntento((i) => i + 1);
+    };
+    // Al volver a la app: si la cámara quedó cortada se abre de nuevo; si solo se pausó el video, sigue.
+    const alVolver = () => {
+      if (document.visibilityState !== "visible" || cancelado || !stream) return;
+      if (stream.getVideoTracks().every((p) => p.readyState === "ended")) reabrir();
+      else if (video?.paused) void video.play().catch(() => {});
+    };
+    document.addEventListener("visibilitychange", alVolver);
     setEstado("iniciando");
     navigator.mediaDevices
       .getUserMedia({
@@ -93,6 +103,8 @@ export function useConteoEnVivo({
         }
         stream = s;
         video.srcObject = s;
+        // Si el teléfono corta la cámara (otra app la usa, se fue a segundo plano), se vuelve a abrir.
+        s.getVideoTracks()[0]?.addEventListener("ended", reabrir);
         // La linterna se prende sola si el celular lo deja (más luz: imagen más nítida).
         void prenderLinterna(s.getVideoTracks()[0]);
         await video.play().catch(() => {});
@@ -105,6 +117,8 @@ export function useConteoEnVivo({
       });
     return () => {
       cancelado = true;
+      document.removeEventListener("visibilitychange", alVolver);
+      stream?.getVideoTracks()[0]?.removeEventListener("ended", reabrir);
       stream?.getTracks().forEach((t) => t.stop());
       if (video) video.srcObject = null;
     };

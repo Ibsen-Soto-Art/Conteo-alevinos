@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { navegar } from "../../app/rutas";
 import { useSesion } from "../../app/SesionContexto";
 import { prepararSonido } from "../../shared/avisos";
@@ -11,6 +12,9 @@ import { Redirigir } from "../../shared/ui/Redirigir";
  */
 export function Devolver() {
   const { estado, acciones } = useSesion();
+  // Se mira al abrir la pantalla: al empezar a contar, el conteo nace aquí mismo.
+  const [conConteo] = useState(() => estado.conteo !== null);
+  if (conConteo) return <Redirigir a="inicio" />;
   if (!estado.lote) return <Redirigir a="prueba" />;
 
   return (

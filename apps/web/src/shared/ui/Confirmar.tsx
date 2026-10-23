@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, type ComponentType } from "react";
 import { IconoReiniciar } from "./Iconos";
 
 /**
@@ -11,7 +11,10 @@ export function Confirmar({
   si,
   onSi,
   onNo,
+  Icono = IconoReiniciar,
 }: {
+  /** El dibujo de arriba: por defecto la flecha de «volver a cero». */
+  Icono?: ComponentType<{ className?: string }>;
   titulo: string;
   detalle?: string;
   si: string;
@@ -35,7 +38,7 @@ export function Confirmar({
         aria-labelledby="confirmar-titulo"
         onClick={(e) => e.stopPropagation()}
       >
-        <IconoReiniciar className="confirmar-icono" />
+        <Icono className="confirmar-icono" />
         <h2 id="confirmar-titulo" className="confirmar-titulo">
           {titulo}
         </h2>

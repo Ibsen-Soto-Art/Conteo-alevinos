@@ -23,8 +23,11 @@ export interface Repositorio {
   guardarBolsa(bolsa: Bolsa): Promise<void>;
   /** Conteos terminados, el más reciente primero. */
   leerHistorial(limite?: number): Promise<ConteoGuardado[]>;
-  /** Si el teléfono se apagó contando, el conteo se cierra con la hora de su última bolsa: no se pierde nada. */
-  cerrarConteosAbiertos(): Promise<void>;
+  /**
+   * Si el teléfono se apagó contando, el conteo se cierra con la hora de su última bolsa: no se
+   * pierde nada. `excepto`: el conteo que se va a seguir (se recuperó al abrir la app).
+   */
+  cerrarConteosAbiertos(excepto?: string): Promise<void>;
 }
 
 class BaseDeDatos extends Dexie {
@@ -78,9 +81,9 @@ export function crearRepositorio(nombre = "contador-alevinos"): Repositorio {
       return historial;
     },
 
-    async cerrarConteosAbiertos() {
+    async cerrarConteosAbiertos(excepto) {
       await db.transaction("rw", db.conteos, db.bolsas, async () => {
-        const abiertos = (await db.conteos.toArray()).filter((c) => c.fin === null);
+        const abiertos = (await db.conteos.toArray()).filter((c) => c.fin === null && c.id !== excepto);
         for (const c of abiertos) {
           const bolsas = await db.bolsas.where("conteoId").equals(c.id).toArray();
           const ultima = bolsas.map((b) => b.cerradaEn).sort().at(-1);

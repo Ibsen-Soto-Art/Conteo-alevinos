@@ -30,7 +30,7 @@ Estas reglas mandan sobre cualquier otra preferencia de estilo. Si una pantalla 
 
 En este orden:
 
-1. **Inicio:** arriba el nombre de la finca y el aviso «Todo guardado». En el centro un botón enorme «Contar alevinos» con dibujo de pez. Debajo dos botones: «Conteos» y «Ayuda». Abajo una tarjeta con el último conteo.
+1. **Inicio:** arriba el nombre de la finca y el aviso «Todo guardado». En el centro un botón enorme «Contar alevinos» con dibujo de pez. Debajo dos botones: «Conteos» y «Ayuda». Abajo una tarjeta con el último conteo. **Con un conteo abierto** (se volvió atrás o la página se cerró contando) el botón enorme es «Seguir contando» con la bolsa y lo que lleva, y debajo «Terminar» (con confirmación) y «Ayuda»: no se puede empezar otro conteo encima del abierto.
 2. **Qué pez** (paso 1 de 3): barra de avance y botón Volver. «¿Qué pez va a contar?» con 4 botones grandes (Cachama, Pangasius, Bocachico, Otra especie; cada una con su perfil de forma y tamaño, ver docs/especies/perfiles.md) y «¿De qué tamaño?» con 3 botones (Pequeño, Mediano, Grande). Botón «Siguiente».
 3. **Prueba de 100** (paso 2 de 3): mientras cuenta, la cámara grande (ver abajo), la línea «Eche al canal 100 contados a mano.», el número en vivo «37 de 100» y los botones «Volver a cero» y «Ya pasaron todos». Al terminar: los tres pasos numerados («Cuente 100 alevinos a mano», «Échelos al canal», «Mire cuántos contó la app»), un círculo con el resultado, en verde «Prueba buena», o en rojo si el factor sale de 0,90 a 1,10, con qué revisar. Botones «Repetir» y «Siguiente».
 4. **Cuántos por bolsa** (paso 3 de 3): número grande con botones − y + de 100 en 100. Atajos 500, 1.000, 1.500 y 2.000, y la opción «Sin meta: yo cierro cada bolsa». Botón «Empezar a contar».

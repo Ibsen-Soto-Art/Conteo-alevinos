@@ -11,6 +11,7 @@ import {
 } from "@contador/domain";
 import type { Especie, Talla } from "../shared/catalogo";
 import type { ConteoGuardado } from "../shared/datos/repositorio";
+import type { ConteoEnCurso } from "./enCurso";
 
 export type { ConteoGuardado };
 
@@ -62,6 +63,10 @@ export type Accion =
   | { tipo: "deshacerCierre" }
   | { tipo: "terminar"; fin: string }
   | { tipo: "cargarHistorial"; historial: ConteoGuardado[] }
+  /** Al abrir la app: el conteo que quedó abierto (la página se cerró contando). */
+  | { tipo: "restaurar"; enCurso: ConteoEnCurso }
+  /** Terminar un conteo sin ninguna bolsa: se cierra y no va al historial. */
+  | { tipo: "abandonarConteo" }
   | { tipo: "guardado"; ok: boolean };
 
 export const META_PASO = 100;
@@ -116,6 +121,8 @@ export function ultimaBolsaValida(e: EstadoSesion): Bolsa | undefined {
 export function reducir(e: EstadoSesion, a: Accion): EstadoSesion {
   switch (a.tipo) {
     case "empezar":
+      // Con un conteo abierto no se empieza otro: primero hay que terminarlo (desde el Inicio).
+      if (e.conteo) return e;
       return {
         ...e,
         especie: null,
@@ -145,6 +152,8 @@ export function reducir(e: EstadoSesion, a: Accion): EstadoSesion {
     case "fijarMeta":
       return { ...e, meta: a.meta };
     case "empezarConteo":
+      // Nunca encima de uno abierto (por ejemplo, volviendo atrás hasta «Empezar a contar»).
+      if (e.conteo) return e;
       return { ...e, conteo: a.conteo, crudo: 0, bolsas: [], pausado: false };
     case "sumar":
       // Negativo si se devuelve uno ya contado; nunca baja de 0.
@@ -184,6 +193,12 @@ export function reducir(e: EstadoSesion, a: Accion): EstadoSesion {
     }
     case "cargarHistorial":
       return { ...e, historial: a.historial };
+    case "restaurar": {
+      const r = a.enCurso;
+      return { ...e, especie: r.especie, talla: r.talla, lote: r.lote, meta: r.meta, conteo: r.conteo, crudo: r.crudo, bolsas: r.bolsas, pausado: r.pausado };
+    }
+    case "abandonarConteo":
+      return { ...e, conteo: null, crudo: 0, bolsas: [], pausado: false };
     case "guardado":
       return { ...e, guardado: a.ok };
   }
@@ -208,8 +223,12 @@ export function estadoInicial(): EstadoSesion {
   };
 }
 
-/** Datos de ejemplo (?demo) para ver las pantallas sin hacer un conteo de verdad. */
-export function estadoDeEjemplo(ahora = new Date()): EstadoSesion {
+/**
+ * Datos de ejemplo (?demo) para ver las pantallas sin hacer un conteo de verdad. Con `conConteo`,
+ * un conteo abierto con dos bolsas (para Contando y Bolsa lista); sin él, el lote listo y la
+ * prueba hecha, antes de empezar a contar (las demás pantallas).
+ */
+export function estadoDeEjemplo(ahora = new Date(), { conConteo = true } = {}): EstadoSesion {
   const ayer = new Date(ahora.getTime() - 86_400_000);
   ayer.setHours(15, 40, 0, 0);
   const lote: Lote = {
@@ -230,9 +249,9 @@ export function estadoDeEjemplo(ahora = new Date()): EstadoSesion {
     pruebaEnVivo: 97,
     pruebaApp: 97,
     lote,
-    conteo,
-    crudo: 740,
-    bolsas: [bolsa(1, 973), bolsa(2, 971)],
+    conteo: conConteo ? conteo : null,
+    crudo: conConteo ? 740 : 0,
+    bolsas: conConteo ? [bolsa(1, 973), bolsa(2, 971)] : [],
     historial: [
       {
         id: "ejemplo-1",
