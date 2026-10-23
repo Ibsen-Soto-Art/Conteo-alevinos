@@ -98,16 +98,15 @@ jobs:
           cache: pip
           cache-dependency-path: ml/requirements-*.txt
 
+      # ffmpeg desde PyPI (imageio-ffmpeg trae un ffmpeg estático): los servidores de Ubuntu fallaron
+      # varias veces seguidas instalándolo con apt y este trabajo solo necesita ffmpeg.
       - name: Instalar ffmpeg y las librerías de datos (sin PyTorch)
         run: |
-          for intento in 1 2 3; do
-            timeout 180 sudo apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=30 update &&
-              timeout 240 sudo apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=30 install -y --no-install-recommends ffmpeg && break
-            echo "Intento $intento falló; se vuelve a intentar."
-            [ "$intento" = 3 ] && exit 1
-            sleep 15
-          done
-          pip install -r ml/requirements-pruebas.txt
+          pip install imageio-ffmpeg -r ml/requirements-pruebas.txt
+          mkdir -p "$RUNNER_TEMP/ffmpeg"
+          ln -s "$(python -c 'import imageio_ffmpeg; print(imageio_ffmpeg.get_ffmpeg_exe())')" "$RUNNER_TEMP/ffmpeg/ffmpeg"
+          echo "$RUNNER_TEMP/ffmpeg" >> "$GITHUB_PATH"
+          "$RUNNER_TEMP/ffmpeg/ffmpeg" -version | head -1
 
       - name: Pruebas de los pasos de datos
         working-directory: ml
