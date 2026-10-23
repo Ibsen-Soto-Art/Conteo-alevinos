@@ -89,9 +89,9 @@ export function estadisticasDe(muestras: Pick<Medidas, "largo" | "ancho" | "area
  * dispersión 0 y no por eso hay que descartar al que mide un poco menos) y sin salirse de
  * 0,6× a 1,6× la mediana.
  */
-export function rangoDelLote(m: Medida, minimoRelativo = 0.6, maximoRelativo = 1.6): Rango {
-  const abajo = Math.min(m.mediana * 0.75, m.mediana - 3 * m.dispersion);
-  const arriba = Math.max(m.mediana * 1.25, m.mediana + 3 * m.dispersion);
+export function rangoDelLote(m: Medida, minimoRelativo = 0.6, maximoRelativo = 1.6, holgura = 0.25): Rango {
+  const abajo = Math.min(m.mediana * (1 - holgura), m.mediana - 3 * m.dispersion);
+  const arriba = Math.max(m.mediana * (1 + holgura), m.mediana + 3 * m.dispersion);
   return [Math.max(m.mediana * minimoRelativo, abajo), Math.min(m.mediana * maximoRelativo, arriba)];
 }
 
@@ -103,7 +103,23 @@ const centro = (r: Rango) => (r[0] + r[1]) / 2;
  */
 export function perfilEnPixeles(
   perfil: PerfilForma,
-  { lote = null, pxPorCm = null, areaMinima = 6 }: { lote?: EstadisticasLote | null; pxPorCm?: number | null; areaMinima?: number } = {},
+  {
+    lote = null,
+    pxPorCm = null,
+    areaMinima = 6,
+    loteAprendido = false,
+  }: {
+    lote?: EstadisticasLote | null;
+    pxPorCm?: number | null;
+    areaMinima?: number;
+    /**
+     * El lote lo aprendió el motor solo (sin marcas ni Prueba de 100), con pocos alevinos y a veces
+     * sesgado: se acepta más variedad de tamaño (de 0,3 a 1,7 veces el típico o más), porque con tallas
+     * disparejas el rango de una Prueba de 100 (0,6 a 1,6, ±25 %) descartaba los más chicos. Lo
+     * muy chico que no es alevino lo frenan la forma, el área mínima y la persistencia.
+     */
+    loteAprendido?: boolean;
+  } = {},
 ): PerfilPx {
   const base = {
     relacionArriba: perfil.relacionArriba,
@@ -117,14 +133,16 @@ export function perfilEnPixeles(
   if (lote && lote.muestras > 0) {
     const largoTipico = lote.largo.mediana;
     const anchoTipico = lote.ancho.mediana;
-    const largo = rangoDelLote(lote.largo);
+    const rango = (m: Medida, cuadrado = false) =>
+      loteAprendido ? rangoDelLote(m, cuadrado ? 0.09 : 0.3, cuadrado ? 4 : 2, cuadrado ? 0.91 : 0.7) : rangoDelLote(m);
+    const largo = rango(lote.largo);
     // De lado se ve más ancho: el máximo es el largo ÷ la relación de lado más baja.
-    const anchoMax = Math.max(rangoDelLote(lote.ancho)[1], (largo[1] / perfil.relacionLado[0]) * 1.1);
+    const anchoMax = Math.max(rango(lote.ancho)[1], (largo[1] / perfil.relacionLado[0]) * 1.1);
     return {
       ...base,
       largo,
-      ancho: [rangoDelLote(lote.ancho)[0], anchoMax],
-      area: [rangoDelLote(lote.area)[0], Math.max(rangoDelLote(lote.area)[1], lote.area.mediana * (anchoMax / anchoTipico))],
+      ancho: [rango(lote.ancho)[0], anchoMax],
+      area: [rango(lote.area, true)[0], Math.max(rango(lote.area, true)[1], lote.area.mediana * (anchoMax / anchoTipico))],
       largoTipico,
       anchoTipico,
       radioCierre: radio(anchoTipico),
@@ -222,10 +240,19 @@ export function pesoPorForma(m: Medidas, p: PerfilPx): number {
   const anchoUno = anchoMaximoDeUno(p);
   // Varios pegados lado a lado que forman una mancha redonda: por área (área de uno observada).
   const porArea = variosPorArea(m, p) ? Math.round(m.area / p.areaUnoVista!) : 1;
-  // En fila según el largo de los sueltos ya vistos: más que 1,7 de ellos y que 4 dispersiones.
+  // En fila (cola con cabeza): hace falta ver la cintura entre los dos (m.enFila ≥ 2) además del
+  // largo, o un largo de más de 2,2 alevinos. Solo por el largo, un alevino grande de un lote
+  // disparejo valía 2 (simulación de 100 con tamaños de 1 a 3: contaba 105).
+  // Sin cintura, más del doble de un alevino grande (`grandeDeUno`).
+  const enFila = (largoTipico: number, limite: number, grandeDeUno: number) =>
+    m.largo > limite && (m.enFila >= 2 || m.largo >= 2 * grandeDeUno) ? Math.max(2, Math.round(m.largo / largoTipico)) : 1;
+  // Según el largo de los sueltos ya vistos: más que 1,7 de ellos y que 4 dispersiones. Un suelto
+  // grande es la mediana más 2 dispersiones (los grandes se contaban dobles y no entraban a la
+  // lista de sueltos: la mediana sola sale baja en un lote de tallas disparejas).
   const visto = p.largoUnoVisto;
-  const porLargoVisto =
-    visto && m.largo > Math.max(1.7 * visto.mediana, visto.mediana + 4 * visto.dispersion) ? Math.max(2, Math.round(m.largo / visto.mediana)) : 1;
+  const porLargoVisto = visto
+    ? enFila(visto.mediana, Math.max(1.7 * visto.mediana, visto.mediana + 4 * visto.dispersion), Math.max(1.1 * visto.mediana, visto.mediana + 2 * visto.dispersion))
+    : 1;
   // Sin tamaño: los dos lomos (cabezas o colas lado a lado) en una mancha alargada, o el área.
   if (L === null || W === null || anchoUno === null)
     return Math.max(1, porArea, porLargoVisto, m.cuerpos >= 2 && m.relacion >= RELACION_BURBUJA ? m.cuerpos : 1);
@@ -235,7 +262,7 @@ export function pesoPorForma(m: Medidas, p: PerfilPx): number {
   // valía 2 aunque el perfil lo acepta como uno (prueba en campo: 50 objetos, contó 64).
   // Con sueltos ya vistos manda su largo real (ver porLargoVisto), no el del perfil.
   const largoDeUno = Math.max(1.75 * L, (p.largo?.[1] ?? 0) * 1.1);
-  const porLargo = visto ? porLargoVisto : m.largo > largoDeUno ? Math.max(2, Math.round(m.largo / L)) : 1;
+  const porLargo = visto ? porLargoVisto : enFila(L, largoDeUno, 1.1 * L);
   const porAncho = m.ancho > anchoUno * 1.15 ? Math.max(2, Math.round(m.ancho / (W * 1.15))) : 1;
   const lateral = Math.max(m.cuerpos, porAncho);
   const peso = Math.max(porArea, porLargo > 1 && lateral > 1 ? porLargo * lateral : Math.max(porLargo, lateral));
@@ -353,6 +380,7 @@ function unir(a: Medidas, b: Medidas): Medidas {
     solidez: Math.min(1, area / (areaPoligono(envolvente) || area)),
     hueco: 0,
     cuerpos: 1,
+    enFila: 1,
     caja: [Math.min(a.caja[0], b.caja[0]), Math.min(a.caja[1], b.caja[1]), Math.max(a.caja[2], b.caja[2]), Math.max(a.caja[3], b.caja[3])],
     envolvente,
     m20,

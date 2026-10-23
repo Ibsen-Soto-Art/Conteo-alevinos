@@ -43,11 +43,24 @@ describe("peso por forma, no por área", () => {
     expect(pesoPorForma(deLado!, perfil)).toBe(1);
   });
 
-  it("dos alevinos pegados lado a lado pesan 2; dos en fila (el doble de largo), también", () => {
+  it("dos alevinos pegados lado a lado pesan 2; dos en fila (con la cintura donde se tocan), también", () => {
     const [ladoALado] = medidas([pez(76, 120), pez(84, 120)]);
     expect(pesoPorForma(ladoALado!, perfil)).toBe(2);
-    const [enFila] = medidas([{ tipo: "elipse", cx: 80, cy: 120, largo: 80, ancho: 8, angulo: 90 }]);
+    const [enFila] = medidas([pez(80, 100), pez(80, 140)]);
+    expect(enFila!.enFila).toBe(2);
     expect(pesoPorForma(enFila!, perfil)).toBe(2);
+    const [encimados] = medidas([pez(80, 104), pez(80, 136)]);
+    expect(pesoPorForma(encimados!, perfil)).toBe(2);
+  });
+
+  it("una mancha larga SIN cintura vale 1 hasta 2,2 alevinos (un alevino grande); más larga, por el largo", () => {
+    // Antes una sola elipse del doble de largo valía 2: en un lote de tallas disparejas, un alevino
+    // grande se contaba doble (simulación de 100: 105).
+    const [doble] = medidas([{ tipo: "elipse", cx: 80, cy: 120, largo: 80, ancho: 8, angulo: 90 }]);
+    expect(doble!.enFila).toBe(1);
+    expect(pesoPorForma(doble!, perfil)).toBe(1);
+    const [muyLarga] = medidas([{ tipo: "elipse", cx: 80, cy: 120, largo: 100, ancho: 8, angulo: 90 }]);
+    expect(pesoPorForma(muyLarga!, perfil)).toBe(2);
   });
 });
 

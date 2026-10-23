@@ -59,6 +59,26 @@ describe("medidas de cada mancha", () => {
     expect(deLado!.cuerpos).toBe(1);
   });
 
+  it("cintura: dos alevinos en fila (tocándose o encimados) son 2; uno solo, aun grande o con la cabeza ancha, es 1", () => {
+    const una = (f: Figura[]) => manchas(f)[0]!;
+    const e = (cy: number, largo = 40): Figura => ({ tipo: "elipse", cx: 80, cy, largo, ancho: 8, angulo: 90 });
+    expect(una([e(100), e(140)]).enFila).toBe(2);
+    expect(una([e(104), e(136)]).enFila).toBe(2);
+    expect(una([e(120, 80)]).enFila).toBe(1);
+    const gota: Figura[] = [
+      { tipo: "elipse", cx: 80, cy: 135, largo: 30, ancho: 18, angulo: 90 },
+      { tipo: "elipse", cx: 80, cy: 111, largo: 42, ancho: 7, angulo: 90 },
+    ];
+    expect(una(gota).enFila).toBe(1);
+    // Con aleta al final de la cola (un ensanchamiento chico después de un tallo fino): 1.
+    const conAleta: Figura[] = [
+      { tipo: "elipse", cx: 80, cy: 135, largo: 30, ancho: 14, angulo: 90 },
+      { tipo: "rect", x: 79, y: 104, ancho: 3, alto: 18 },
+      { tipo: "elipse", cx: 80, cy: 100, largo: 8, ancho: 7, angulo: 90 },
+    ];
+    expect(una(conAleta).enFila).toBe(1);
+  });
+
   it("la basura irregular (una cruz) es poco sólida", () => {
     const [m] = manchas([
       { tipo: "rect", x: 60, y: 96, ancho: 40, alto: 6 },

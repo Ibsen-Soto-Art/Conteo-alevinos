@@ -20,6 +20,12 @@ export interface Medidas {
   hueco: number;
   /** Cuerpos lado a lado: 2 si se ven dos lomos separados en la cabeza y en la cola. */
   cuerpos: number;
+  /**
+   * Cuerpos en fila (cola con cabeza): 2 o más si a lo largo del eje la mancha tiene dos partes
+   * anchas con una «cintura» angosta entre ellas. Un alevino solo (aun grande, con la cabeza ancha
+   * y la cola fina) tiene una sola parte ancha: 1.
+   */
+  enFila: number;
   /** Caja [x0, y0, x1, y1) y vértices de la envolvente convexa [x, y, x, y, ...]. */
   caja: [number, number, number, number];
   envolvente: number[];
@@ -159,6 +165,7 @@ export function medir(pixeles: Int32Array, n: number, ancho: number, cerrada?: {
     solidez,
     hueco: huecos / (n + huecos),
     cuerpos: contarCuerpos(local, w, h, cx - cx0, cy - cy0, angulo, largo),
+    enFila: contarEnFila(local, w, h, cx - cx0, cy - cy0, angulo, largo),
     caja: [cx0, cy0, cx1 + 1, cy1 + 1],
     envolvente,
     m20: mu20,
@@ -283,6 +290,65 @@ function contarHuecos(local: Uint8Array, w: number, h: number): number {
  * de lado tienen dos tramos cerca de la cabeza y cerca de la cola; un solo alevino, aunque tenga
  * la cola partida, los tiene solo en un extremo.
  */
+/**
+ * Cuerpos en fila: el grosor de la mancha en rebanadas de ~1 px a lo largo del eje mayor.
+ * 2 si hay dos partes anchas (de al menos la mitad del ancho mayor), separadas por un cuarto del
+ * largo o más, con una cintura de menos del 70 % de la más angosta de las dos y al menos el 30 %
+ * de la mancha a cada lado de la cintura (la aleta de la cola no es otro pez). Dos alevinos en
+ * fila: 2. Uno solo, aunque sea grande (cabeza ancha y cola fina) o muy largo: 1.
+ */
+function contarEnFila(local: Uint8Array, w: number, h: number, cx: number, cy: number, angulo: number, largo: number): number {
+  if (largo < 9) return 1;
+  // Rebanadas de ~1 px: más gruesas, el ancho de la parte ancha tapa la cintura dentro de la rebanada.
+  const rebanadas = Math.max(8, Math.min(96, Math.round(largo)));
+  const c = Math.cos(angulo);
+  const s = Math.sin(angulo);
+  let umin = Infinity;
+  let umax = -Infinity;
+  for (let y = 0; y < h; y++)
+    for (let x = 0; x < w; x++) {
+      if (!local[y * w + x]) continue;
+      const u = (x - cx) * c + (y - cy) * s;
+      if (u < umin) umin = u;
+      if (u > umax) umax = u;
+    }
+  const tramo = (umax - umin) / rebanadas || 1;
+  // Grosor de cada rebanada: sus píxeles ÷ su espesor. No el ancho de borde a borde: una cola
+  // curva (fina pero doblada) mide mucho de borde a borde y parecía otra parte ancha.
+  const pixeles = new Float64Array(rebanadas);
+  for (let y = 0; y < h; y++)
+    for (let x = 0; x < w; x++) {
+      if (!local[y * w + x]) continue;
+      const r = Math.min(rebanadas - 1, Math.floor(((x - cx) * c + (y - cy) * s - umin) / tramo));
+      pixeles[r]! += 1;
+    }
+  const grosor = Array.from(pixeles, (n) => n / tramo);
+  // Promedio de 3 rebanadas (~3 px): el pixelado no hace picos falsos.
+  const suave = grosor.map((_, i) => (grosor[Math.max(0, i - 1)]! + grosor[i]! + grosor[Math.min(rebanadas - 1, i + 1)]!) / 3);
+  const mayor = Math.max(...suave);
+  // Picos: rebanadas anchas (al menos la mitad del mayor) que no tienen vecinas más anchas.
+  const picos = suave
+    .map((a, i) => ({ a, i }))
+    .filter(({ a, i }) => a >= 0.5 * mayor && a >= (suave[i - 1] ?? 0) && a >= (suave[i + 1] ?? 0));
+  const separacion = Math.max(2, Math.ceil(rebanadas / 4));
+  for (let j = 0; j < picos.length; j++)
+    for (let k = j + 1; k < picos.length; k++) {
+      const p = picos[j]!;
+      const q = picos[k]!;
+      if (q.i - p.i < separacion) continue;
+      const tramoCintura = suave.slice(p.i, q.i + 1);
+      const cintura = Math.min(...tramoCintura);
+      if (cintura >= 0.7 * Math.min(p.a, q.a)) continue;
+      // Cada lado de la cintura con al menos el 30 % de la mancha: dos alevinos dejan ~la mitad a
+      // cada lado; la aleta de la cola (o una cola curva) es un pedacito y no cuenta como otro pez.
+      const corte = p.i + tramoCintura.indexOf(cintura);
+      const antes = pixeles.slice(0, corte + 1).reduce((s, n) => s + n, 0);
+      const total = pixeles.reduce((s, n) => s + n, 0);
+      if (Math.min(antes, total - antes) >= 0.3 * total) return 2;
+    }
+  return 1;
+}
+
 function contarCuerpos(local: Uint8Array, w: number, h: number, cx: number, cy: number, angulo: number, largo: number): number {
   const c = Math.cos(angulo);
   const s = Math.sin(angulo);

@@ -87,4 +87,19 @@ describe("conteo de menos: causas encontradas", { timeout: 60_000 }, () => {
     c.push(...fila(4, (x, y) => [pez(x, y, 3.6 * 16, (3.6 * 16) / 5.5)]).slice(10));
     expect(correr(c).total).toBe(16);
   });
+
+  it("simulación de campo — gotas de tamaños muy variables (7 a 24 px, de 1 a 3): cuenta todas, sin perder chicas ni doblar grandes", () => {
+    // Video de prueba del 2026-10-23 (100 alevinos con tamaños variables): sin marcas, el tamaño
+    // aprendido (±25 %) descartaba las chicas por «tamaño» y «dos en fila» doblaba las grandes.
+    const gota = (cx: number, cy: number, largo: number): Figura[] => [
+      { tipo: "elipse", cx, cy: cy + largo * 0.25, largo: largo * 0.5, ancho: largo * 0.3, angulo: 90 }, // cabeza
+      { tipo: "elipse", cx, cy: cy - largo * 0.15, largo: largo * 0.7, ancho: largo * 0.12, angulo: 90 }, // cola
+    ];
+    const largos = Array.from({ length: 40 }, (_, i) => 8 + ((i * 7) % 40) * 0.42); // 8 a 24 px, mezclados
+    for (const pxPorCm of [null, 16]) {
+      const { total } = correr(fila(40, (x, y, i) => gota(x, y, largos[i]! * 2)), pxPorCm);
+      expect(total, pxPorCm ? "con marcas" : "sin marcas").toBe(40);
+    }
+  });
 });
+

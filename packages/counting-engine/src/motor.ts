@@ -430,7 +430,12 @@ export class MotorConteo {
     const { perfil, lote, pxPorCm, detector } = this.config;
     if (!perfil) return null;
     return {
-      ...perfilEnPixeles(perfil, { lote: lote ?? (pxPorCm ? null : this.loteAprendido), pxPorCm, areaMinima: detector.areaMinima }),
+      ...perfilEnPixeles(perfil, {
+        lote: lote ?? (pxPorCm ? null : this.loteAprendido),
+        pxPorCm,
+        areaMinima: detector.areaMinima,
+        loteAprendido: !lote && !pxPorCm && this.loteAprendido !== null,
+      }),
       ...this.unoVisto(),
     };
   }
